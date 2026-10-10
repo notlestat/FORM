@@ -67,6 +67,15 @@ import type { Evaluation, Raster } from "./engine";
 import { RecoveryStore } from "../platform/recovery";
 import type { RecoverySnapshot } from "../platform/recovery";
 
+import {
+  alignArtwork,
+  artworkSelection,
+  selectionBounds,
+  translateArtwork,
+  removeArtwork,
+} from "../core/arrangement";
+import type { Alignment } from "../core/arrangement";
+
 type Selection = { kind: "node" | "placement"; id: string } | null;
 type Mode = "select" | "trajectory" | "selection";
 type Prepared = {
@@ -232,7 +241,8 @@ function FieldApp() {
   const [doc, setDoc] = useState(initial.current),
     [camera, setCamera] = useState<Camera>(initial.current.presentation.camera),
     cameraRef = useRef(camera),
-    [selection, setSelection] = useState<Selection>(null),
+    [selection, setPrimarySelection] = useState<Selection>(null),
+    [artworkIds, setArtworkIds] = useState<string[]>([]),
     [mode, setMode] = useState<Mode>("select"),
     [branchId, setBranchId] = useState<string | null>(null);
   const [result, setResult] = useState<Evaluation>(blankResult),
@@ -298,6 +308,21 @@ function FieldApp() {
       const p = d.placements.find((p) => p.id === id);
       if (p) edit(p);
     });
+  const setSelection = (s: Selection) => {
+    setPrimarySelection(s);
+    setArtworkIds(s?.kind === "placement" ? [s.id] : []);
+  };
+  const selectedArtworkIds = artworkIds.filter((id) =>
+    doc.placements.some((p) => p.id === id),
+  );
+  const multipleArtwork = selectedArtworkIds.length > 1;
+  const alignmentReady =
+    !updating &&
+    multipleArtwork &&
+    selectedArtworkIds.every((id) => {
+      const p = doc.placements.find((p) => p.id === id)!;
+      return result.outputs.has(p.nodeId);
+    });
   const currentPlacement =
     selection?.kind === "placement"
       ? doc.placements.find((p) => p.id === selection.id)
@@ -344,11 +369,18 @@ function FieldApp() {
   const deleteSelection = () => {
     if (locked || !selection) return;
     if (selection.kind === "placement") {
-      execute("Remove artwork placement", (d) => {
-        d.placements = d.placements.filter((p) => p.id !== selection.id);
-      });
+      execute(
+        multipleArtwork
+          ? "Remove selected artwork"
+          : "Remove artwork placement",
+        (d) =>
+          removeArtwork(
+            d,
+            selectedArtworkIds.length ? selectedArtworkIds : [selection.id],
+          ),
+      );
       setNotice(
-        "Artwork removed. Undo restores it; linked copies and its process remain.",
+        "Selected artwork removed. Undo restores it; shared process objects remain.",
       );
     } else if (selection.kind === "node") {
       execute("Delete process object", (d) => removeNode(d, selection.id));
@@ -378,6 +410,29 @@ function FieldApp() {
       if (imageEdge?.from !== n.id) setBranchId(null);
     } else setBranchId(null);
   };
+  const selectArtwork = (id: string, additive = false, preserve = false) => {
+    if (locked) return selectedArtworkIds;
+    const next = artworkSelection(
+      selectedArtworkIds,
+      id,
+      additive && mode === "select",
+      preserve,
+    );
+    select(next.length ? { kind: "placement", id: next.at(-1)! } : null);
+    setArtworkIds(next);
+    return next;
+  };
+  const selectAllArtwork = () => {
+    if (locked) return;
+    const next = doc.placements.filter((p) => p.visible).map((p) => p.id);
+    select(next.length ? { kind: "placement", id: next.at(-1)! } : null);
+    setArtworkIds(next);
+    setMode("select");
+  };
+  const alignSelected = (alignment: Alignment) =>
+    execute("Align selected artwork", (d) =>
+      alignArtwork(d, selectedArtworkIds, result.outputs, alignment),
+    );
   const clientPoint = (e: { clientX: number; clientY: number }) => {
     const r = field.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -391,7 +446,9 @@ function FieldApp() {
   const processing = processSignature(doc),
     visibleIds = [
       ...new Set(doc.placements.filter((p) => p.visible).map((p) => p.nodeId)),
-    ].sort().join("|");
+    ]
+      .sort()
+      .join("|");
   useEffect(() => {
     if (!initialized) return;
     const abort = new AbortController();
@@ -601,7 +658,10 @@ function FieldApp() {
         redo();
       }
       if (e.key.toLowerCase() === "f" && !locked) fitView();
-      if (e.key === "Escape" && !locked) setMode("select");
+      if (e.key === "Escape" && !locked) {
+        setMode("select");
+        select(null);
+      }
     };
     const keyUp = (e: KeyboardEvent) => {
         if (e.key === " ") space.current = false;
@@ -751,15 +811,24 @@ function FieldApp() {
       select({ kind: "placement", id: p.id });
       return;
     }
-    select({ kind: "placement", id: p.id });
-    const first = worldPoint(e),
-      original = structuredClone(p.transform);
-    runGesture(e, "Move artwork", (point) =>
-      commands.current.execute("Move artwork", (d) => {
-        const item = d.placements.find((v) => v.id === p.id)!;
-        item.transform.x = original.x + point.x - first.x;
-        item.transform.y = original.y + point.y - first.y;
-      }),
+    if (locked || !e.isPrimary || e.button !== 0) return;
+    if (e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      selectArtwork(p.id, true);
+      return;
+    }
+    const ids = selectArtwork(p.id, false, true),
+      first = worldPoint(e),
+      original = commands.current.state;
+    const label = ids.length > 1 ? "Move selected artwork" : "Move artwork";
+    runGesture(e, label, (point) =>
+      commands.current.execute(label, () =>
+        translateArtwork(original, ids, {
+          x: point.x - first.x,
+          y: point.y - first.y,
+        }),
+      ),
     );
   }
   function moveNode(e: React.PointerEvent, n: FieldNode) {
@@ -832,10 +901,15 @@ function FieldApp() {
       delta = offsets[e.key];
     if (!delta) return;
     e.preventDefault();
-    patchPlacement(p.id, "Nudge artwork", (item) => {
-      item.transform.x += delta.x * (e.shiftKey ? 10 : 1);
-      item.transform.y += delta.y * (e.shiftKey ? 10 : 1);
-    });
+    const ids = selectedArtworkIds.includes(p.id)
+      ? selectedArtworkIds
+      : selectArtwork(p.id);
+    execute("Nudge selected artwork", (d) =>
+      translateArtwork(d, ids, {
+        x: delta.x * (e.shiftKey ? 10 : 1),
+        y: delta.y * (e.shiftKey ? 10 : 1),
+      }),
+    );
   }
   function pathDrag(
     e: React.PointerEvent,
@@ -1028,7 +1102,9 @@ function FieldApp() {
   function fitView() {
     if (!field.current || locked) return;
     let bounds: Rect[] = [];
-    if (currentPlacement) {
+    if (multipleArtwork && alignmentReady) {
+      bounds = [selectionBounds(doc, selectedArtworkIds, result.outputs)];
+    } else if (currentPlacement) {
       const r = result.outputs.get(currentPlacement.nodeId);
       if (r)
         bounds = [
@@ -1612,7 +1688,10 @@ function FieldApp() {
           <button disabled={locked} onClick={() => photoInput.current?.click()}>
             Place photograph
           </button>
-          <button disabled={locked || !renderable} onClick={createOperation}>
+          <button
+            disabled={locked || !renderable || multipleArtwork}
+            onClick={createOperation}
+          >
             Create AFTERIMAGE
           </button>
         </div>
@@ -1623,6 +1702,7 @@ function FieldApp() {
               disabled={
                 locked ||
                 !initialized ||
+                (multipleArtwork && key !== "select") ||
                 ((key === "trajectory" || key === "selection") && !operation)
               }
               aria-pressed={mode === key}
@@ -1693,19 +1773,27 @@ function FieldApp() {
               </button>
             </div>
             <h3>
-              Artwork <small className="layer-direction">Front → back</small>
+              Artwork{" "}
+              <small className="layer-direction">
+                Front → back · Shift-click to select several
+              </small>
             </h3>
+            <button
+              className="quiet"
+              disabled={locked || !doc.placements.some((p) => p.visible)}
+              onClick={selectAllArtwork}
+            >
+              Select all artwork
+            </button>
             <ul>
               {[...doc.placements].reverse().map((p) => (
                 <li key={p.id}>
                   <button
                     className={
-                      selection?.kind === "placement" && selection.id === p.id
-                        ? "selected"
-                        : ""
+                      selectedArtworkIds.includes(p.id) ? "selected" : ""
                     }
                     disabled={locked}
-                    onClick={() => select({ kind: "placement", id: p.id })}
+                    onClick={(e) => selectArtwork(p.id, e.shiftKey)}
                   >
                     <span>{p.name}</span>
                     <small>
@@ -1817,9 +1905,7 @@ function FieldApp() {
               .filter((p) => p.visible)
               .map((placement) => {
                 const raster = result.outputs.get(placement.nodeId),
-                  selected =
-                    selection?.kind === "placement" &&
-                    selection.id === placement.id,
+                  selected = selectedArtworkIds.includes(placement.id),
                   node = doc.nodes.find((n) => n.id === placement.nodeId)!,
                   t = placement.transform;
                 const isPath =
@@ -1859,12 +1945,13 @@ function FieldApp() {
                         transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
                         transformOrigin: "bottom left",
                       }}
-                      title="Drag to move; arrow keys nudge; Shift moves by 10"
+                      title="Shift-click to select several; drag to move selection; arrow keys nudge; Shift nudges by 10"
                       onPointerDown={(e) => movePlacement(e, placement)}
                       onKeyDown={(e) => placementKey(e, placement)}
-                      onClick={() =>
-                        select({ kind: "placement", id: placement.id })
-                      }
+                      onClick={(e) => {
+                        if (e.detail === 0)
+                          selectArtwork(placement.id, e.shiftKey);
+                      }}
                     >
                       <span>{placement.name}</span>
                       <small>
@@ -1894,33 +1981,36 @@ function FieldApp() {
                         </div>
                       )}
                     </div>
-                    {selected && raster && mode === "select" && (
-                      <>
-                        <button
-                          className="transform-handle scale-handle"
-                          aria-label={`Scale ${placement.name}`}
-                          style={{
-                            transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
-                          }}
-                          onPointerDown={(e) =>
-                            transformHandle(e, placement, raster, "scale")
-                          }
-                        />
-                        <button
-                          className="transform-handle rotate-handle"
-                          aria-label={`Rotate ${placement.name}`}
-                          title="Drag to rotate around the artwork centre"
-                          style={{
-                            transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
-                          }}
-                          onPointerDown={(e) =>
-                            transformHandle(e, placement, raster, "rotate")
-                          }
-                        >
-                          ↻
-                        </button>
-                      </>
-                    )}
+                    {selected &&
+                      !multipleArtwork &&
+                      raster &&
+                      mode === "select" && (
+                        <>
+                          <button
+                            className="transform-handle scale-handle"
+                            aria-label={`Scale ${placement.name}`}
+                            style={{
+                              transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
+                            }}
+                            onPointerDown={(e) =>
+                              transformHandle(e, placement, raster, "scale")
+                            }
+                          />
+                          <button
+                            className="transform-handle rotate-handle"
+                            aria-label={`Rotate ${placement.name}`}
+                            title="Drag to rotate around the artwork centre"
+                            style={{
+                              transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
+                            }}
+                            onPointerDown={(e) =>
+                              transformHandle(e, placement, raster, "rotate")
+                            }
+                          >
+                            ↻
+                          </button>
+                        </>
+                      )}
                     {isPath && (
                       <svg
                         className="art-overlay trajectory-overlay"
@@ -2273,23 +2363,78 @@ function FieldApp() {
           <aside className="inspector" aria-label="Contextual inspector">
             <div className="panel-heading">
               <h2>
-                {currentPlacement
-                  ? "Artwork"
-                  : currentNode
-                    ? currentNode.kind === "image"
-                      ? "Photograph"
-                      : currentNode.kind === "afterimage"
-                        ? "AFTERIMAGE"
-                        : currentNode.kind === "trajectory"
-                          ? "Trajectory"
-                          : "Selection"
-                    : "Field"}
+                {multipleArtwork
+                  ? `${selectedArtworkIds.length} artworks`
+                  : currentPlacement
+                    ? "Artwork"
+                    : currentNode
+                      ? currentNode.kind === "image"
+                        ? "Photograph"
+                        : currentNode.kind === "afterimage"
+                          ? "AFTERIMAGE"
+                          : currentNode.kind === "trajectory"
+                            ? "Trajectory"
+                            : "Selection"
+                      : "Field"}
               </h2>
               <button className="quiet" onClick={() => setShowInspector(false)}>
                 Hide
               </button>
             </div>
-            {currentPlacement && (
+            {multipleArtwork && (
+              <section className="inspector-section">
+                <h3>Align selection</h3>
+                <p className="control-help">
+                  Align to the combined bounds of the selected artwork. Rotated
+                  and reflected images use their transformed image rectangles.
+                </p>
+                <div className="action-pair">
+                  {(
+                    [
+                      ["left", "Left edges"],
+                      ["right", "Right edges"],
+                      ["center-x", "Horizontal centres"],
+                      ["center-y", "Vertical centres"],
+                      ["top", "Top edges"],
+                      ["bottom", "Bottom edges"],
+                    ] as [Alignment, string][]
+                  ).map(([alignment, label]) => (
+                    <button
+                      key={alignment}
+                      disabled={locked || !alignmentReady}
+                      onClick={() => alignSelected(alignment)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {!alignmentReady && (
+                  <p className="control-help">
+                    All selected outputs must render before alignment is
+                    available.
+                  </p>
+                )}
+                <p className="control-help">
+                  Drag any selected image to move them together. Shift-click an
+                  image or its Objects entry to add or remove it. Arrow keys on
+                  an artwork label nudge the selection; Shift nudges by 10.
+                  Escape clears the selection.
+                </p>
+                <div className="action-pair">
+                  <button disabled={locked} onClick={() => select(null)}>
+                    Clear selection
+                  </button>
+                  <button
+                    className="danger"
+                    disabled={locked}
+                    onClick={deleteSelection}
+                  >
+                    Remove selected
+                  </button>
+                </div>
+              </section>
+            )}
+            {currentPlacement && !multipleArtwork && (
               <section className="inspector-section">
                 <NameField
                   value={currentPlacement.name}
@@ -2538,7 +2683,7 @@ function FieldApp() {
                 </button>
               </section>
             )}
-            {currentNode && (
+            {currentNode && !multipleArtwork && (
               <section className="inspector-section">
                 <h3>{currentPlacement ? "Process" : "Object"}</h3>
                 <NameField
@@ -2641,7 +2786,7 @@ function FieldApp() {
                 )}
               </section>
             )}
-            {operation?.kind === "afterimage" && (
+            {operation?.kind === "afterimage" && !multipleArtwork && (
               <section className="inspector-section">
                 <h3>Exposures</h3>
                 <div className="number-grid">
@@ -2823,66 +2968,69 @@ function FieldApp() {
                 </details>
               </section>
             )}
-            {actualPath && operation?.kind === "afterimage" && (
-              <section className="inspector-section">
-                <details
-                  open={
-                    currentNode?.kind === "trajectory" || mode === "trajectory"
-                  }
-                >
-                  <summary>Trajectory points</summary>
-                  <p className="control-help">
-                    Draw over the output or edit source-space coordinates. One
-                    smooth cubic is retained.
-                  </p>
-                  {actualPath.map((p, i) => (
-                    <div className="number-grid path-row" key={i}>
-                      <NumberField
-                        label={`Point ${i + 1} X`}
-                        value={p.x}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          execute("Shape trajectory", (d) => {
-                            const n = d.nodes.find(
-                              (n) => n.id === pathNode?.id,
-                            );
-                            if (n?.kind === "trajectory") n.points[i].x = v;
-                            else {
-                              const op = d.nodes.find(
-                                (n) => n.id === operation.id,
+            {actualPath &&
+              operation?.kind === "afterimage" &&
+              !multipleArtwork && (
+                <section className="inspector-section">
+                  <details
+                    open={
+                      currentNode?.kind === "trajectory" ||
+                      mode === "trajectory"
+                    }
+                  >
+                    <summary>Trajectory points</summary>
+                    <p className="control-help">
+                      Draw over the output or edit source-space coordinates. One
+                      smooth cubic is retained.
+                    </p>
+                    {actualPath.map((p, i) => (
+                      <div className="number-grid path-row" key={i}>
+                        <NumberField
+                          label={`Point ${i + 1} X`}
+                          value={p.x}
+                          disabled={locked}
+                          onCommit={(v) =>
+                            execute("Shape trajectory", (d) => {
+                              const n = d.nodes.find(
+                                (n) => n.id === pathNode?.id,
                               );
-                              if (op?.kind === "afterimage")
-                                op.params.path[i].x = v;
-                            }
-                          })
-                        }
-                      />
-                      <NumberField
-                        label={`Point ${i + 1} Y`}
-                        value={p.y}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          execute("Shape trajectory", (d) => {
-                            const n = d.nodes.find(
-                              (n) => n.id === pathNode?.id,
-                            );
-                            if (n?.kind === "trajectory") n.points[i].y = v;
-                            else {
-                              const op = d.nodes.find(
-                                (n) => n.id === operation.id,
+                              if (n?.kind === "trajectory") n.points[i].x = v;
+                              else {
+                                const op = d.nodes.find(
+                                  (n) => n.id === operation.id,
+                                );
+                                if (op?.kind === "afterimage")
+                                  op.params.path[i].x = v;
+                              }
+                            })
+                          }
+                        />
+                        <NumberField
+                          label={`Point ${i + 1} Y`}
+                          value={p.y}
+                          disabled={locked}
+                          onCommit={(v) =>
+                            execute("Shape trajectory", (d) => {
+                              const n = d.nodes.find(
+                                (n) => n.id === pathNode?.id,
                               );
-                              if (op?.kind === "afterimage")
-                                op.params.path[i].y = v;
-                            }
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
-                </details>
-              </section>
-            )}
-            {maskNode?.kind === "selection" && (
+                              if (n?.kind === "trajectory") n.points[i].y = v;
+                              else {
+                                const op = d.nodes.find(
+                                  (n) => n.id === operation.id,
+                                );
+                                if (op?.kind === "afterimage")
+                                  op.params.path[i].y = v;
+                              }
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </details>
+                </section>
+              )}
+            {maskNode?.kind === "selection" && !multipleArtwork && (
               <section className="inspector-section">
                 <h3>Selection</h3>
                 <label className="select-control">
@@ -3110,7 +3258,7 @@ function FieldApp() {
                 )}
               </section>
             )}
-            {connectionTargets && (
+            {connectionTargets && !multipleArtwork && (
               <section className="inspector-section">
                 <details
                   open={currentNode?.kind === "afterimage" && !currentPlacement}

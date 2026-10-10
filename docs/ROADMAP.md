@@ -113,3 +113,8 @@ The development workflow requires a feature branch and a pull request before mer
 ## Composition continuation, 10 October
 
 After Corey reported the preceding build works for now and asked to continue, the next bounded step adds artwork layer order and opacity within FIELD. This begins precise composition controls without claiming a separate FRAME environment or passing the native/runtime gates. [Scope and evidence](ARTWORK_COMPOSITION.md).
+
+
+## Arrangement continuation, 10 October
+
+After Corey reports the additional-image workflow works, the next bounded composition step adds multi-selection, joint movement/deletion and edge/centre alignment within FIELD. [Scope and evidence](ARTWORK_ALIGNMENT.md). This retains the open canvas; it does not introduce FRAME navigation, typography or live inputs.

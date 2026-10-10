@@ -42,6 +42,14 @@ import type { FieldDocument } from "./field.ts";
 import { operationInputs, operationKey } from "./evaluation.ts";
 import { imageBounds } from "./image.ts";
 import { composeArtwork } from "./composition.ts";
+import {
+  alignArtwork,
+  artworkRect,
+  artworkSelection,
+  removeArtwork,
+  selectionBounds,
+  translateArtwork,
+} from "./arrangement.ts";
 
 const photo = new Uint8Array(
   readFileSync(
@@ -825,4 +833,184 @@ test("composition submits back-to-front source-over draws with independent opaci
   );
   assert.equal(context.globalAlpha, 0.6);
   assert.equal(stack.length, 0);
+});
+
+test("Shift selection toggles artwork exactly once and plain dragging preserves a selected set", () => {
+  assert.deepEqual(artworkSelection([], "a", false), ["a"]);
+  assert.deepEqual(artworkSelection(["a", "a"], "b", true), ["a", "b"]);
+  assert.deepEqual(artworkSelection(["a"], "b", true), ["a", "b"]);
+  assert.deepEqual(artworkSelection(["a", "b"], "a", true), ["b"]);
+  assert.deepEqual(artworkSelection(["a"], "a", true), []);
+  assert.deepEqual(artworkSelection(["a", "b"], "a", false, true), ["a", "b"]);
+  assert.deepEqual(artworkSelection(["a", "b"], "a", false), ["a"]);
+  assert.deepEqual(artworkSelection(["a", "b"], "c", false, true), ["c"]);
+});
+function arrangementFixture() {
+  const b = base();
+  let d = linkedCopy(b.document, b.placementId, "arrange-b");
+  d = linkedCopy(d, b.placementId, "arrange-c");
+  d.placements[0].transform = {
+    x: 80,
+    y: -70,
+    scaleX: 1.5,
+    scaleY: 0.8,
+    rotation: 31,
+  };
+  d.placements[1].transform = {
+    x: -90,
+    y: 220,
+    scaleX: -0.7,
+    scaleY: 1.2,
+    rotation: -65,
+  };
+  d.placements[2].transform = {
+    x: 410,
+    y: 470,
+    scaleX: 0.6,
+    scaleY: -1.4,
+    rotation: 170,
+  };
+  d.placements[1].opacity = 0.4;
+  return {
+    d,
+    ids: d.placements.map((p) => p.id),
+    sizes: new Map([[d.placements[0].nodeId, { width: 391, height: 623 }]]),
+  };
+}
+test("all six alignments use transformed selection bounds while retaining rotation, reflection and graph", () => {
+  const { d, ids, sizes } = arrangementFixture();
+  const original = structuredClone(d),
+    box = selectionBounds(d, ids, sizes);
+  for (const alignment of [
+    "left",
+    "center-x",
+    "right",
+    "top",
+    "center-y",
+    "bottom",
+  ] as const) {
+    const result = alignArtwork(d, ids, sizes, alignment);
+    for (let i = 0; i < result.placements.length; i++) {
+      const p = result.placements[i],
+        r = artworkRect(p, sizes),
+        t = d.placements[i].transform;
+      if (alignment === "left") near(r.x, box.x);
+      if (alignment === "right") near(r.x + r.width, box.x + box.width);
+      if (alignment === "center-x")
+        near(r.x + r.width / 2, box.x + box.width / 2);
+      if (alignment === "top") near(r.y, box.y);
+      if (alignment === "bottom") near(r.y + r.height, box.y + box.height);
+      if (alignment === "center-y")
+        near(r.y + r.height / 2, box.y + box.height / 2);
+      near(p.transform.rotation, t.rotation);
+      near(p.transform.scaleX, t.scaleX);
+      near(p.transform.scaleY, t.scaleY);
+      if (["left", "center-x", "right"].includes(alignment))
+        near(p.transform.y, t.y);
+      else near(p.transform.x, t.x);
+      assert.equal(p.opacity, d.placements[i].opacity);
+    }
+    assert.deepEqual(result.nodes, d.nodes);
+    assert.deepEqual(result.edges, d.edges);
+    assert.deepEqual(result.assets, d.assets);
+    assert.deepEqual(
+      result.placements.map((p) => p.id),
+      ids,
+    );
+  }
+  assert.deepEqual(d, original);
+});
+test("alignment changes only selected placements and rejects missing geometry without mutation", () => {
+  const { d, ids, sizes } = arrangementFixture(),
+    original = structuredClone(d);
+  const aligned = alignArtwork(d, ids.slice(0, 2), sizes, "left");
+  assert.deepEqual(aligned.placements[2], d.placements[2]);
+  assert.throws(() => alignArtwork(d, [ids[0]], sizes, "left"), /at least two/);
+  assert.throws(
+    () => alignArtwork(d, [ids[0], "missing"], sizes, "left"),
+    /existing artwork/,
+  );
+  assert.throws(() => alignArtwork(d, ids, new Map(), "left"), /Render all/);
+  for (const width of [0, -1, NaN, Infinity]) {
+    assert.throws(
+      () =>
+        alignArtwork(
+          d,
+          ids,
+          new Map([[d.placements[0].nodeId, { width, height: 100 }]]),
+          "left",
+        ),
+      /Render all/,
+    );
+  }
+  assert.deepEqual(d, original);
+});
+test("group translation preserves relative spacing and leaves other artwork intact", () => {
+  const { d, ids } = arrangementFixture(),
+    original = structuredClone(d),
+    delta = { x: 123.5, y: -97.25 };
+  const next = translateArtwork(d, [ids[0], ids[1], ids[0]], delta);
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual(next.placements[i], {
+      ...d.placements[i],
+      transform: {
+        ...d.placements[i].transform,
+        x: d.placements[i].transform.x + delta.x,
+        y: d.placements[i].transform.y + delta.y,
+      },
+    });
+  }
+  assert.deepEqual(next.placements[2], d.placements[2]);
+  assert.deepEqual(d, original);
+  assert.throws(
+    () => translateArtwork(d, ids, { x: NaN, y: 1 }),
+    /Invalid artwork/,
+  );
+  assert.throws(
+    () => translateArtwork(d, ["missing"], delta),
+    /existing artwork/,
+  );
+});
+test("group gestures commit one history entry and cancellation preserves the previous redo branch", () => {
+  const { d, ids } = arrangementFixture(),
+    commands = new FieldCommands(d);
+  commands.begin("Group move");
+  for (const x of [10, 20, 60])
+    commands.execute("Move", () => translateArtwork(d, ids, { x, y: 30 }));
+  commands.commit();
+  const moved = commands.state;
+  commands.undo();
+  assert.deepEqual(commands.state, d);
+  assert.equal(commands.status.undo, null);
+  commands.begin("Cancelled move");
+  commands.execute("Move", () => translateArtwork(d, ids, { x: 500, y: 400 }));
+  commands.cancel();
+  assert.deepEqual(commands.state, d);
+  commands.redo();
+  assert.deepEqual(commands.state, moved);
+});
+test("group deletion is atomic and undo restores every placement without changing shared processes", () => {
+  const { d, ids } = arrangementFixture(),
+    commands = new FieldCommands(d);
+  commands.execute("Remove selection", (state) =>
+    removeArtwork(state, ids.slice(0, 2)),
+  );
+  assert.deepEqual(commands.state.placements, [d.placements[2]]);
+  assert.deepEqual(commands.state.nodes, d.nodes);
+  assert.deepEqual(commands.state.edges, d.edges);
+  commands.undo();
+  assert.deepEqual(commands.state, d);
+  assert.throws(() => removeArtwork(d, ["missing"]), /existing artwork/);
+});
+test("aligned group transforms roundtrip without new file state and keep operation cache identity", async () => {
+  const { d, ids, sizes } = arrangementFixture();
+  const aligned = alignArtwork(d, ids, sizes, "center-x");
+  const moved = translateArtwork(aligned, ids, { x: 42, y: 83 });
+  const opened = await decodeField(await encodeField(moved, images));
+  assert.deepEqual(opened.document, moved);
+  const region = { x: 0, y: 0, width: 1000, height: 1000 };
+  assert.equal(
+    await operationKey(moved, op(d).id, hash, region, "preview"),
+    await operationKey(d, op(d).id, hash, region, "preview"),
+  );
 });
