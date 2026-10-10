@@ -1,5 +1,7 @@
 # GitHub review workflow
 
+[Draft PR #2](https://github.com/notlestat/FORM/pull/2) is open against `main`, verified at implementation commit `64af62f957d0c3836096f349d920752e117c5d2a`. It contains the connected FIELD build and inherited prototype. No PR is merged. Remaining live verification is explicit in the draft and [FIRST_BUILD.md](FIRST_BUILD.md).
+
 The next implementation is on `codex/field-first-build`: the first connected FIELD workspace, composition and recovery. [First-build evidence](FIRST_BUILD.md) records 76 passing CPU tests and the live checks still pending. Because PR #1 is unmerged and `main` contains only initialization, this branch inherits the full prototype; its new PR targets `main` with that full scope. No merge is authorised.
 
 10 October 2026.

@@ -1,5 +1,13 @@
 # Architecture decisions
 
+## 10 October: first FIELD implementation
+
+D22, authorised first FIELD build: Corey's request to build the whole first build supersedes the earlier bounded-experiment-only implementation gate. Complete the brief's FIELD journey with AFTERIMAGE first; retain FRAME/LIVE/cameras/native hosting as future milestones. The ten-item implementation/evidence map is in [FIRST_BUILD.md](FIRST_BUILD.md).
+
+D23, implemented sharing: typed graph objects own source/path/selection/operation data. Linked placements share one output; independent variations recursively copy editable upstream entities and share only immutable assets. Layout and composition transforms are separate. Format 3 stores this model, with explicit migration from versions 1/2.
+
+D24, implemented bounded rendering/persistence: semantic hashes drive dependency caching; GPU evaluation is serialised per evaluator with cancellation guards. Preview uses a 768px bound; export uses bounded 4K operation rasters and tiled Canvas2D sRGB composition. Browser IndexedDB recovery complements portable downloads without claiming native atomic save or a backup. Live interaction/GPU/restart recovery remain unverified because the saved browser permission blocks local testing. These choices require artist/device validation before a release claim.
+
 All decisions below are proposed unless explicitly marked confirmed. Date: 9 October 2026.
 
 | ID | Decision | Reason and cost | Revisit when |
