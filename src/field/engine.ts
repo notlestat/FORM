@@ -1,3 +1,4 @@
+import { composeArtwork } from "../core/composition";
 import { AfterimageRenderer } from "../../experiments/afterimage/renderer";
 import {
   rasterizeMask,
@@ -383,21 +384,7 @@ export class CaptureRenderer {
     c.clearRect(0, 0, width, height);
     c.scale(width / region.width, height / region.height);
     c.translate(-region.x, -region.y);
-    for (const placement of this.placements) {
-      if (!placement.visible || !placement.included) continue;
-      const output = this.outputs.get(placement.nodeId);
-      if (!output)
-        throw Error(
-          `Cannot export ${placement.name}: its current output is unavailable.`,
-        );
-      const t = placement.transform;
-      c.save();
-      c.translate(t.x, t.y);
-      c.rotate((t.rotation * Math.PI) / 180);
-      c.scale(t.scaleX, t.scaleY);
-      c.drawImage(output.image, 0, 0, output.width, output.height);
-      c.restore();
-    }
+    composeArtwork(c, this.placements, this.outputs);
   }
   read() {
     const c = this.canvas.getContext("2d")!,

@@ -1,8 +1,8 @@
 # GitHub review workflow
 
-[Draft PR #2](https://github.com/notlestat/FORM/pull/2) is open against `main`, verified at implementation commit `64af62f957d0c3836096f349d920752e117c5d2a`. It contains the connected FIELD build and inherited prototype. No PR is merged. Remaining live verification is explicit in the draft and [FIRST_BUILD.md](FIRST_BUILD.md).
+The current composition step is on `codex/artwork-composition`, based on FIELD commit `5aac947b97e79956e3c6752f488758a2d88d4883`. It adds placement layer order and opacity with 84 CPU tests/build passing. [Composition scope](ARTWORK_COMPOSITION.md) records remaining live checks.
 
-The next implementation is on `codex/field-first-build`: the first connected FIELD workspace, composition and recovery. [First-build evidence](FIRST_BUILD.md) records 80 passing CPU tests and the live checks still pending. Because PR #1 is unmerged and `main` contains only initialization, this branch inherits the full prototype; its new PR targets `main` with that full scope. No merge is authorised.
+[Draft PR #2](https://github.com/notlestat/FORM/pull/2) remains open against `main` for the first connected FIELD build. No PR is merged. Since `main` still contains only initialization, the composition branch also inherits the complete prototype and FIELD implementation. The new review should assess composition against PR #2's head while treating the full main-target diff as inherited context.
 
 10 October 2026.
 

@@ -108,3 +108,8 @@ The next requested step strengthens direct artistic control: draw movement over 
 After Corey confirmed drawn trajectories worked, the next bounded step adds manual paint/erase selection on source photographs. Brush strokes are editable, independently duplicated, undoable and portable. Eight tests bring the suite to 52. Rendering/export plumbing and in-app GPU fixtures are implemented; brush interaction, feathering and pixel/export checks are not yet verified through browser control. See [scope](PAINTED_MASK.md).
 
 The development workflow requires a feature branch and a pull request before merging. This work is on codex/painted-subject-mask. No commits or GitHub remote existed at initial inspection. On 10 October Corey authorised repository creation, pushing and a PR, then requested public visibility. [GitHub review workflow](GITHUB.md) records the initialization baseline and complete-prototype review scope. No merge is authorised.
+
+
+## Composition continuation, 10 October
+
+After Corey reported the preceding build works for now and asked to continue, the next bounded step adds artwork layer order and opacity within FIELD. This begins precise composition controls without claiming a separate FRAME environment or passing the native/runtime gates. [Scope and evidence](ARTWORK_COMPOSITION.md).

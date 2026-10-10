@@ -32,6 +32,9 @@ import {
   fromWorld,
   independentVariation,
   linkedCopy,
+  isExportedArtwork,
+  placementOpacity,
+  reorderArtwork,
   outputType,
   removeNode,
   replaceImage,
@@ -46,6 +49,7 @@ import {
   FIELD_LIMITS,
 } from "../core/field";
 import type {
+  ArtworkOrder,
   Coverage,
   FieldDocument,
   FieldNode,
@@ -298,6 +302,15 @@ function FieldApp() {
     selection?.kind === "placement"
       ? doc.placements.find((p) => p.id === selection.id)
       : undefined;
+  const placementIndex = currentPlacement
+    ? doc.placements.findIndex((p) => p.id === currentPlacement.id)
+    : -1;
+  const changeOrder = (order: ArtworkOrder) => {
+    if (locked || !currentPlacement) return;
+    execute("Arrange artwork", (d) =>
+      reorderArtwork(d, currentPlacement.id, order),
+    );
+  };
   const currentNode = doc.nodes.find(
     (n) =>
       n.id ===
@@ -378,7 +391,7 @@ function FieldApp() {
   const processing = processSignature(doc),
     visibleIds = [
       ...new Set(doc.placements.filter((p) => p.visible).map((p) => p.nodeId)),
-    ].join("|");
+    ].sort().join("|");
   useEffect(() => {
     if (!initialized) return;
     const abort = new AbortController();
@@ -1337,9 +1350,11 @@ function FieldApp() {
   async function exportArtwork(size = 4096) {
     if (locked) return;
     const d = snapshot(),
-      included = d.placements.filter((p) => p.visible && p.included);
+      included = d.placements.filter(isExportedArtwork);
     if (!included.length) {
-      setError("Include artwork in the export first.");
+      setError(
+        "Include visible artwork with opacity above 0% in the export first.",
+      );
       return;
     }
     setBusy(true);
@@ -1405,9 +1420,11 @@ function FieldApp() {
     abortExport.current = controller;
     try {
       const state = snapshot(),
-        included = state.placements.filter((p) => p.included && p.visible);
+        included = state.placements.filter(isExportedArtwork);
       if (!included.length)
-        throw Error("Include artwork before running rendering checks.");
+        throw Error(
+          "Include visible artwork with opacity above 0% before running rendering checks.",
+        );
       const evaluated = await engine.evaluate(
         state,
         assets.current,
@@ -1675,9 +1692,11 @@ function FieldApp() {
                 Hide
               </button>
             </div>
-            <h3>Artwork</h3>
+            <h3>
+              Artwork <small className="layer-direction">Front → back</small>
+            </h3>
             <ul>
-              {doc.placements.map((p) => (
+              {[...doc.placements].reverse().map((p) => (
                 <li key={p.id}>
                   <button
                     className={
@@ -1695,6 +1714,9 @@ function FieldApp() {
                           ? "In export"
                           : "Reference"
                         : "Hidden"}
+                      {placementOpacity(p) < 1
+                        ? ` · ${Math.round(placementOpacity(p) * 100)}%`
+                        : ""}
                       {doc.placements.filter((q) => q.nodeId === p.nodeId)
                         .length > 1
                         ? " · Linked"
@@ -1859,6 +1881,7 @@ function FieldApp() {
                     </button>
                     <div
                       className="visual-body"
+                      style={{ opacity: placementOpacity(placement) }}
                       onPointerDown={(e) => {
                         if (space.current || e.button === 1) canvasDown(e);
                         else movePlacement(e, placement);
@@ -2368,6 +2391,59 @@ function FieldApp() {
                     )
                   }
                 />
+                <NumberField
+                  label="Opacity %"
+                  min={0}
+                  max={100}
+                  value={placementOpacity(currentPlacement) * 100}
+                  disabled={locked}
+                  onCommit={(n) =>
+                    patchPlacement(
+                      currentPlacement.id,
+                      "Change artwork opacity",
+                      (p) => {
+                        p.opacity = n / 100;
+                      },
+                    )
+                  }
+                />
+                <h3>Layer order</h3>
+                <div className="action-pair">
+                  <button
+                    disabled={
+                      locked || placementIndex === doc.placements.length - 1
+                    }
+                    onClick={() => changeOrder("front")}
+                  >
+                    Bring to front
+                  </button>
+                  <button
+                    disabled={locked || placementIndex === 0}
+                    onClick={() => changeOrder("back")}
+                  >
+                    Send to back
+                  </button>
+                  <button
+                    disabled={
+                      locked || placementIndex === doc.placements.length - 1
+                    }
+                    onClick={() => changeOrder("forward")}
+                  >
+                    Forward one
+                  </button>
+                  <button
+                    disabled={locked || placementIndex === 0}
+                    onClick={() => changeOrder("backward")}
+                  >
+                    Back one
+                  </button>
+                </div>
+                <p className="control-help">
+                  The Objects list reads front to back. Layer order and opacity
+                  apply to this placement, including export; linked copies keep
+                  their own composition settings. At 0% the artwork stays
+                  selectable but contributes nothing to export.
+                </p>
                 <label className="check-control">
                   <input
                     type="checkbox"

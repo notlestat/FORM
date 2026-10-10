@@ -58,6 +58,8 @@ The legacy study is preserved at `?legacy=1`. Its format-2 writer cannot reopen 
 
 ## Evidence and remaining review
 
+Corey reports on 10 October that everything checked is good for now and authorises the next build. This is provisional user-reported acceptance of the preceding build; specific test coverage is unknown. It does not establish agent GPU/platform/recovery verification or approve a merge. The next implemented step is [artwork layer order and opacity](ARTWORK_COMPOSITION.md), with 84 current CPU tests. The 80-test report below records the preceding revision.
+
 - `npm test`: **80/80 passed** (52 retained prototype tests, 28 new FIELD/export tests).
 - `npm run build`: TypeScript and production build passed. The shared renderer/UI dependency chunk remains above Vite's 500 kB advisory size.
 - `git diff --check`: passed.

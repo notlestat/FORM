@@ -970,3 +970,11 @@ polyline.brush-ink {
     animation: none !important;
   }
 }
+
+.layer-direction {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 4px;
+}

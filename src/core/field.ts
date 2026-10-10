@@ -54,6 +54,8 @@ export type Placement = {
   transform: Transform;
   visible: boolean;
   included: boolean;
+  /** Absent in older format 3 files: fully opaque. Applies to this view only. */
+  opacity?: number;
 };
 export type FieldDocument = {
   format: "form";
@@ -273,7 +275,8 @@ export function validateField(value: unknown): asserts value is FieldDocument {
       Math.abs(t.scaleX) < 0.05 ||
       Math.abs(t.scaleY) < 0.05 ||
       typeof p.visible !== "boolean" ||
-      typeof p.included !== "boolean"
+      typeof p.included !== "boolean" ||
+      (p.opacity !== undefined && (!finite(p.opacity, 1) || p.opacity < 0))
     )
       fail("Invalid artwork placement or transform.");
     placementIds.add(p.id);
@@ -406,6 +409,32 @@ export function linkedCopy(
   validateField(next);
   return next;
 }
+export type ArtworkOrder = "front" | "forward" | "backward" | "back";
+/** Placements are stored back to front; process objects keep their own order. */
+export function reorderArtwork(
+  d: FieldDocument,
+  placementId: string,
+  order: ArtworkOrder,
+): FieldDocument {
+  const next = structuredClone(d);
+  const index = next.placements.findIndex((p) => p.id === placementId);
+  if (index < 0) fail("Select artwork to change its layer order.");
+  const target =
+    order === "front"
+      ? next.placements.length - 1
+      : order === "back"
+        ? 0
+        : order === "forward"
+          ? Math.min(next.placements.length - 1, index + 1)
+          : Math.max(0, index - 1);
+  const [placement] = next.placements.splice(index, 1);
+  next.placements.splice(target, 0, placement);
+  validateField(next);
+  return next;
+}
+export const placementOpacity = (p: Placement): number => p.opacity ?? 1;
+export const isExportedArtwork = (p: Placement): boolean =>
+  p.visible && p.included && placementOpacity(p) > 0;
 export function independentVariation(
   d: FieldDocument,
   placementId: string,
@@ -607,18 +636,18 @@ export function artworkBounds(
   placements: Placement[],
   outputs: Map<string, { width: number; height: number }>,
 ): Rect {
-  const bounds = placements
-    .filter((p) => p.visible && p.included)
-    .map((p) => {
-      const r = outputs.get(p.nodeId);
-      if (!r) fail("Render the included artwork before exporting.");
-      return transformedBounds(
-        { x: 0, y: 0, width: r.width, height: r.height },
-        p.transform,
-      );
-    });
+  const bounds = placements.filter(isExportedArtwork).map((p) => {
+    const r = outputs.get(p.nodeId);
+    if (!r) fail("Render the included artwork before exporting.");
+    return transformedBounds(
+      { x: 0, y: 0, width: r.width, height: r.height },
+      p.transform,
+    );
+  });
   if (!bounds.length)
-    fail("Include at least one artwork placement in the export.");
+    fail(
+      "Include at least one visible artwork placement with opacity above 0% in the export.",
+    );
   const x = Math.min(...bounds.map((r) => r.x)),
     y = Math.min(...bounds.map((r) => r.y));
   return {

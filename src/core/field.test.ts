@@ -23,6 +23,9 @@ import {
   fromWorld,
   independentVariation,
   linkedCopy,
+  isExportedArtwork,
+  placementOpacity,
+  reorderArtwork,
   removeNode,
   replaceImage,
   resizeArtwork,
@@ -38,6 +41,7 @@ import {
 import type { FieldDocument } from "./field.ts";
 import { operationInputs, operationKey } from "./evaluation.ts";
 import { imageBounds } from "./image.ts";
+import { composeArtwork } from "./composition.ts";
 
 const photo = new Uint8Array(
   readFileSync(
@@ -473,7 +477,7 @@ test("decoded image and object budgets fail before allocating rendering resource
   }));
   assert.throws(() => validateField(tooMany), /object limits/);
 });
-test("operation cache identity ignores layout, camera, capture and linked placements", async () => {
+test("operation cache identity ignores layout, camera, capture, layer order, opacity and linked placements", async () => {
   const b = base(),
     d = b.document,
     region = { x: -100, y: -100, width: 1000, height: 1000 };
@@ -484,6 +488,8 @@ test("operation cache identity ignores layout, camera, capture and linked placem
     n.name = "Renamed";
   });
   moved.placements[0].transform.rotation = 40;
+  moved.placements[0].opacity = 0.2;
+  moved.placements.reverse();
   moved.capture.x = -400;
   moved.presentation.camera = { x: -800, y: 920, scale: 3 };
   assert.equal(
@@ -656,4 +662,167 @@ test("rotation crosses the angle wrap continuously in both directions and suppor
     }
     near(total, 1080 * direction);
   }
+});
+
+test("layer moves retain graph and placement settings, with exact undo and boundary no-op", () => {
+  const b = base();
+  let d = linkedCopy(b.document, b.placementId, "middle");
+  d = linkedCopy(d, b.placementId, "front");
+  d.placements[1].opacity = 0.35;
+  const original = structuredClone(d);
+  for (const [order, expected] of [
+    ["front", [b.placementId, "front", "middle"]],
+    ["back", ["middle", b.placementId, "front"]],
+    ["forward", [b.placementId, "front", "middle"]],
+    ["backward", ["middle", b.placementId, "front"]],
+  ] as const) {
+    const next = reorderArtwork(d, "middle", order);
+    assert.deepEqual(
+      next.placements.map((p) => p.id),
+      expected,
+    );
+    assert.deepEqual(next.nodes, d.nodes);
+    assert.deepEqual(next.edges, d.edges);
+    assert.deepEqual(
+      next.placements.find((p) => p.id === "middle"),
+      d.placements[1],
+    );
+  }
+  assert.deepEqual(d, original);
+  assert.throws(() => reorderArtwork(d, "missing", "front"), /Select artwork/);
+  const commands = new FieldCommands(d);
+  commands.execute("Raise", (state) =>
+    reorderArtwork(state, "middle", "front"),
+  );
+  const raised = structuredClone(commands.state);
+  commands.undo();
+  assert.deepEqual(commands.state, original);
+  commands.execute("Boundary", (state) =>
+    reorderArtwork(state, "front", "front"),
+  );
+  commands.redo();
+  assert.deepEqual(commands.state, raised);
+});
+test("opacity is placement-local, portable, backwards compatible, and validated", async () => {
+  const b = base();
+  assert.equal(placementOpacity(b.document.placements[0]), 1);
+  const legacy = await decodeField(await encodeField(b.document, images));
+  assert.equal(placementOpacity(legacy.document.placements[0]), 1);
+  b.document.placements[0].opacity = 0.27;
+  const d = linkedCopy(b.document, b.placementId, "copy");
+  assert.equal(d.placements[1].opacity, 0.27);
+  d.placements[1].opacity = 0.8;
+  const reordered = reorderArtwork(d, b.placementId, "front");
+  const opened = await decodeField(await encodeField(reordered, images));
+  assert.deepEqual(opened.document, reordered);
+  assert.equal(reordered.placements[1].opacity, 0.27);
+  for (const value of [-0.1, 1.1, NaN, Infinity, null, "0.5"]) {
+    const bad = structuredClone(d);
+    (bad.placements[0] as any).opacity = value;
+    assert.throws(() => validateField(bad), /Invalid artwork/);
+  }
+});
+test("fully transparent artwork contributes neither bounds nor required export output", () => {
+  const b = base(),
+    d = linkedCopy(b.document, b.placementId, "transparent");
+  d.placements[1].transform.x = -90000;
+  d.placements[1].nodeId = "source";
+  d.placements[1].opacity = 0;
+  assert.equal(isExportedArtwork(d.placements[1]), false);
+  const outputs = new Map([
+    [b.document.placements[0].nodeId, { width: 100, height: 50 }],
+  ]);
+  assert.deepEqual(
+    artworkBounds(d.placements, outputs),
+    artworkBounds(b.document.placements, outputs),
+  );
+  d.placements[0].opacity = 0;
+  assert.throws(() => artworkBounds(d.placements, new Map()), /Include/);
+});
+test("composition submits back-to-front source-over draws with independent opacity and restores state", () => {
+  const b = base(),
+    d = linkedCopy(b.document, b.placementId, "front");
+  d.placements[0].opacity = 0.25;
+  d.placements[1].opacity = 0.75;
+  d.placements[1].transform = {
+    x: 12,
+    y: 9,
+    rotation: 90,
+    scaleX: -2,
+    scaleY: 0.5,
+  };
+  const log: unknown[] = [],
+    stack: [number, string][] = [];
+  const context = {
+    globalAlpha: 0.6,
+    globalCompositeOperation: "multiply",
+    save() {
+      stack.push([this.globalAlpha, this.globalCompositeOperation]);
+    },
+    restore() {
+      [this.globalAlpha, this.globalCompositeOperation] = stack.pop()!;
+    },
+    translate(x: number, y: number) {
+      log.push(["translate", x, y]);
+    },
+    rotate(angle: number) {
+      log.push(["rotate", angle]);
+    },
+    scale(x: number, y: number) {
+      log.push(["scale", x, y]);
+    },
+    drawImage(...args: unknown[]) {
+      log.push([
+        "draw",
+        this.globalAlpha,
+        this.globalCompositeOperation,
+        ...args,
+      ]);
+    },
+  };
+  const image = {};
+  const outputs = new Map([
+    [d.placements[0].nodeId, { image, width: 100, height: 50 }],
+  ]);
+  composeArtwork(context as any, d.placements, outputs as any);
+  assert.deepEqual(
+    log.filter((v: any) => v[0] === "draw"),
+    [
+      ["draw", 0.25, "source-over", image, 0, 0, 100, 50],
+      ["draw", 0.75, "source-over", image, 0, 0, 100, 50],
+    ],
+  );
+  assert.deepEqual(log.slice(4, 7), [
+    ["translate", 12, 9],
+    ["rotate", Math.PI / 2],
+    ["scale", -2, 0.5],
+  ]);
+  assert.equal(context.globalAlpha, 0.6);
+  assert.equal(context.globalCompositeOperation, "multiply");
+  log.length = 0;
+  const reordered = reorderArtwork(d, "front", "back");
+  composeArtwork(context as any, reordered.placements, outputs as any);
+  assert.deepEqual(
+    log.filter((v: any) => v[0] === "draw").map((v: any) => v[1]),
+    [0.75, 0.25],
+  );
+  log.length = 0;
+  d.placements[0].opacity = 0;
+  d.placements[1].included = false;
+  composeArtwork(context as any, d.placements, new Map());
+  assert.equal(log.length, 0);
+  d.placements[1].included = true;
+  assert.throws(
+    () => composeArtwork(context as any, d.placements, new Map()),
+    /unavailable/,
+  );
+  context.drawImage = () => {
+    throw Error("device failure");
+  };
+  assert.throws(
+    () => composeArtwork(context as any, d.placements, outputs as any),
+    /device failure/,
+  );
+  assert.equal(context.globalAlpha, 0.6);
+  assert.equal(stack.length, 0);
 });
