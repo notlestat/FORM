@@ -1,5 +1,9 @@
 # Architecture decisions
 
+## 10 October: centre-pivot rotation
+
+D26, requested rotation correction: rotate each placed artwork around its transformed centre for both drag and numeric editing. Preserve the existing transform/file model by compensating translation, rather than reinterpreting stored positions. Accumulate wrapped pointer-angle steps so full and repeated turns remain continuous. The rotation handle moves above the artwork midpoint. Reflected and anisotropic transforms retain the same centre; live pointer verification remains pending.
+
 ## 10 October: open canvas interaction
 
 D25, requested by Corey: remove the board capture rectangle and its controls. Compose on the open field; derive export bounds from visible included artwork. Retain stored capture metadata only for compatibility, without applying its old crop. Delete/Backspace routes the selection through the same undoable removal command as the inspector. Shift-drag preserves current artwork proportions. CPU tests cover rotated/reflected proportional resize and automatic bounds; live pointer/keyboard checks remain pending.

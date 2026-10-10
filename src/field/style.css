@@ -465,7 +465,8 @@ button.quiet {
   cursor: nwse-resize;
 }
 .rotate-handle {
-  left: -11px;
+  left: 50%;
+  margin-left: -11px;
   top: -40px;
   cursor: grab;
 }

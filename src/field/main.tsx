@@ -36,6 +36,8 @@ import {
   removeNode,
   replaceImage,
   resizeArtwork,
+  rotateArtwork,
+  rotationStep,
   screenToField,
   toWorld,
   transformedBounds,
@@ -773,22 +775,29 @@ function FieldApp() {
   ) {
     const initial = structuredClone(p.transform),
       start = worldPoint(e),
-      center = { x: initial.x, y: initial.y },
+      center = toWorld({ x: raster.width / 2, y: raster.height / 2 }, initial),
       startAngle = Math.atan2(start.y - center.y, start.x - center.x);
+    let previousAngle = startAngle,
+      turned = 0;
     runGesture(
       e,
       kind === "scale" ? "Scale artwork" : "Rotate artwork",
       (point, event) =>
         commands.current.execute("Transform artwork", (d) => {
           const item = d.placements.find((v) => v.id === p.id)!;
-          if (kind === "rotate")
-            item.transform.rotation =
-              initial.rotation +
-              ((Math.atan2(point.y - center.y, point.x - center.x) -
-                startAngle) *
-                180) /
-                Math.PI;
-          else {
+          if (kind === "rotate") {
+            if (Math.hypot(point.x - center.x, point.y - center.y) < 1e-6)
+              return;
+            const angle = Math.atan2(point.y - center.y, point.x - center.x);
+            turned += rotationStep(previousAngle, angle);
+            previousAngle = angle;
+            item.transform = rotateArtwork(
+              initial,
+              raster.width,
+              raster.height,
+              initial.rotation + turned,
+            );
+          } else {
             item.transform = resizeArtwork(
               initial,
               point,
@@ -1877,6 +1886,7 @@ function FieldApp() {
                         <button
                           className="transform-handle rotate-handle"
                           aria-label={`Rotate ${placement.name}`}
+                          title="Drag to rotate around the artwork centre"
                           style={{
                             transform: `scale(${1 / (camera.scale * Math.abs(t.scaleX))}, ${1 / (camera.scale * Math.abs(t.scaleY))})`,
                           }}
@@ -2345,7 +2355,15 @@ function FieldApp() {
                       currentPlacement.id,
                       "Rotate artwork",
                       (p) => {
-                        p.transform.rotation = n;
+                        const raster = result.outputs.get(p.nodeId);
+                        if (!raster)
+                          throw Error("Render the artwork before rotating it.");
+                        p.transform = rotateArtwork(
+                          p.transform,
+                          raster.width,
+                          raster.height,
+                          n,
+                        );
                       },
                     )
                   }
@@ -2430,9 +2448,10 @@ function FieldApp() {
                   </button>
                 </div>
                 <p className="control-help">
-                  Hold Shift while resizing to preserve proportions. Artwork
-                  transforms affect composition and export. Linked copies share
-                  a process; variations have independent guides.
+                  Rotation turns around the artwork centre. Hold Shift while
+                  resizing to preserve proportions. Artwork transforms affect
+                  composition and export. Linked copies share a process;
+                  variations have independent guides.
                 </p>
                 <button
                   className="danger"

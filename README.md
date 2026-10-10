@@ -20,7 +20,7 @@ Open [the local FIELD preview](http://127.0.0.1:5174/). The older bounded study 
 5. Move, scale or rotate artwork. Mark the placements you want to include in export. The board stays an open canvas.
 6. Save a portable `.form` file, reopen it, then export a transparent PNG at a 2K or 4K long edge.
 
-Process stations arrange the dependency diagram; artwork placement changes the composition and export. Space + drag pans; wheel pans; pinch/Cmd/Ctrl + wheel zooms; F fits the selection. Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z or Ctrl+Y redoes; Escape cancels a gesture. Numeric controls provide precise alternatives. Delete/Backspace removes the selection; typing fields retain normal editing. Hold Shift while dragging a size handle to preserve current proportions. Export fits the included artwork automatically, independently of the viewport and proof background.
+Process stations arrange the dependency diagram; artwork placement changes the composition and export. Space + drag pans; wheel pans; pinch/Cmd/Ctrl + wheel zooms; F fits the selection. Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z or Ctrl+Y redoes; Escape cancels a gesture. Numeric controls provide precise alternatives. Delete/Backspace removes the selection; typing fields retain normal editing. Hold Shift while dragging a size handle to preserve current proportions. Rotation uses the artwork centre for both the handle and numeric control and supports continuous full turns. Export fits the included artwork automatically, independently of the viewport and proof background.
 
 Local recovery keeps a browser-stored project snapshot after edits settle. A previous snapshot is offered for review on startup. Save a downloaded `.form` file for a portable copy; browser storage can be cleared and is not a backup.
 
@@ -32,7 +32,7 @@ npm run build
 git diff --check
 ```
 
-78 CPU tests pass as of 10 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
+80 CPU tests pass as of 10 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
 
 The interface follows the written brief: self-hosted Archivo, restrained monochrome surfaces, thin rules, direct handles and contextual panels. Visual references have not been supplied; the interface still needs Corey's visual approval. The initial public-domain marble-head fixture is credited in [experiment instructions](experiments/README.md).
 

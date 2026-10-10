@@ -558,6 +558,21 @@ export function transformedBounds(r: Rect, t: Transform): Rect {
     height: Math.max(...corners.map((p) => p.y)) - y,
   };
 }
+export function rotateArtwork(
+  t: Transform,
+  width: number,
+  height: number,
+  rotation: number,
+): Transform {
+  const localCenter = { x: width / 2, y: height / 2 };
+  const center = toWorld(localCenter, t);
+  const offset = toWorld(localCenter, { ...t, x: 0, y: 0, rotation });
+  return { ...t, x: center.x - offset.x, y: center.y - offset.y, rotation };
+}
+export function rotationStep(previousAngle: number, nextAngle: number): number {
+  const delta = nextAngle - previousAngle;
+  return (Math.atan2(Math.sin(delta), Math.cos(delta)) * 180) / Math.PI;
+}
 export function resizeArtwork(
   t: Transform,
   pointer: Point,

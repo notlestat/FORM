@@ -26,6 +26,8 @@ import {
   removeNode,
   replaceImage,
   resizeArtwork,
+  rotateArtwork,
+  rotationStep,
   screenToField,
   topologicalOrder,
   toWorld,
@@ -619,4 +621,39 @@ test("automatic export bounds contain transformed included artwork and exclude h
   assert.throws(() => artworkBounds(d.placements, new Map()), /Render/);
   d.placements[0].included = false;
   assert.throws(() => artworkBounds(d.placements, outputs), /Include/);
+});
+test("artwork rotation fixes its world centre through full turns with anisotropic and reflected scale", () => {
+  for (const scaleX of [1.7, -1.7]) {
+    const t = { x: 480, y: -91, scaleX, scaleY: 0.4, rotation: 37 };
+    const localCenter = { x: 391 / 2, y: 623 / 2 },
+      center = toWorld(localCenter, t);
+    for (const angle of [90, 180, 360, 540, -1080]) {
+      const rotated = rotateArtwork(t, 391, 623, angle),
+        after = toWorld(localCenter, rotated);
+      near(after.x, center.x);
+      near(after.y, center.y);
+      assert.equal(rotated.rotation, angle);
+      assert.equal(rotated.scaleX, t.scaleX);
+      assert.equal(rotated.scaleY, t.scaleY);
+      const restored = rotateArtwork(rotated, 391, 623, t.rotation);
+      near(restored.x, t.x);
+      near(restored.y, t.y);
+    }
+  }
+});
+test("rotation crosses the angle wrap continuously in both directions and supports multiple complete turns", () => {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  near(rotationStep(rad(179), rad(-179)), 2);
+  near(rotationStep(rad(-179), rad(179)), -2);
+  for (const direction of [1, -1]) {
+    let last = 0,
+      total = 0;
+    for (let degrees = 10; degrees <= 1080; degrees += 10) {
+      const raw = rad(degrees * direction),
+        angle = Math.atan2(Math.sin(raw), Math.cos(raw));
+      total += rotationStep(last, angle);
+      last = angle;
+    }
+    near(total, 1080 * direction);
+  }
 });

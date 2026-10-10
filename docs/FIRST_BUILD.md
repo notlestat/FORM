@@ -4,7 +4,7 @@
 
 ## Open-canvas interaction update
 
-Corey requested Delete-to-remove, Shift proportional resizing and a full canvas without the capture box. FIELD now implements these behaviours. Artwork deletion removes its placement while retaining shared process objects; deleting a process station removes that object and its views and disconnects downstream inputs. Both are undoable. Delete/Backspace is ignored during text/numeric editing, composition input, repeated key events, busy work or gestures. Shift resizing preserves the current aspect ratio, including existing anisotropic proportions and reflection. Capture mode, its box and controls are removed. Export automatically fits the visible included artwork.
+Corey requested Delete-to-remove, Shift proportional resizing and a full canvas without the capture box. FIELD now implements these behaviours. Artwork deletion removes its placement while retaining shared process objects; deleting a process station removes that object and its views and disconnects downstream inputs. Both are undoable. Delete/Backspace is ignored during text/numeric editing, composition input, repeated key events, busy work or gestures. Shift resizing preserves the current aspect ratio, including existing anisotropic proportions and reflection. Artwork rotation now fixes its transformed centre rather than pivoting around a corner. The top-centre handle and numeric rotation control use the same geometry; angle wrapping is accumulated continuously for full turns. Reflected/nonuniform scale and exact centre preservation are CPU-tested. Capture mode, its box and controls are removed. Export automatically fits the visible included artwork.
 
 ## Implemented journey
 
@@ -58,7 +58,7 @@ The legacy study is preserved at `?legacy=1`. Its format-2 writer cannot reopen 
 
 ## Evidence and remaining review
 
-- `npm test`: **78/78 passed** (52 retained prototype tests, 26 new FIELD/export tests).
+- `npm test`: **80/80 passed** (52 retained prototype tests, 28 new FIELD/export tests).
 - `npm run build`: TypeScript and production build passed. The shared renderer/UI dependency chunk remains above Vite's 500 kB advisory size.
 - `git diff --check`: passed.
 - [CPU report](../experiments/results/field-first-build-cpu.json) and [portable FIELD fixture](../experiments/results/field-first-build.form) retain reproducible scope.

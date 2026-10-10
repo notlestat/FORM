@@ -3,8 +3,8 @@
   "branch": "codex/field-first-build",
   "scope": "CPU geometry, graph, commands, portable codec, semantic cache identity and tiled PNG encoding",
   "tests": {
-    "total": 78,
-    "passed": 78,
+    "total": 80,
+    "passed": 80,
     "failed": 0,
     "log": "field-first-build-tests.txt"
   },
@@ -50,6 +50,7 @@
   "interactionRevision": {
     "delete": "Selection removal via Delete/Backspace is implemented and undoable; live key event verification pending",
     "resize": "Shift preserves current proportions; rotated/reflected geometry and bounds tests passed",
-    "canvas": "No capture box or capture controls; export fits visible included artwork automatically; geometry tests passed"
+    "canvas": "No capture box or capture controls; export fits visible included artwork automatically; geometry tests passed",
+    "rotation": "Centre-preserving handle/numeric rotation and continuous multiple turns implemented; reflected/nonuniform scale and angular-wrap geometry tests passed; live pointer checks pending"
   }
 }
