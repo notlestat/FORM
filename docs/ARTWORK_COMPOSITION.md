@@ -1,6 +1,6 @@
 # Artwork composition
 
-10 October 2026. Branch: `codex/artwork-composition`.
+10 October 2026. Branch: `codex/artwork-composition`. [Draft PR #3](https://github.com/notlestat/FORM/pull/3), open and unmerged.
 
 Overlapping artworks previously followed insertion order with no placement opacity control. Select artwork and use Bring to front, Send to back, Forward one or Back one, then set Opacity % from 0 to 100. The Objects artwork list shows the frontmost placement first. Canvas and PNG exports follow the saved order. Process-station order stays independent.
 

@@ -1,6 +1,6 @@
 # GitHub review workflow
 
-The current composition step is on `codex/artwork-composition`, based on FIELD commit `5aac947b97e79956e3c6752f488758a2d88d4883`. It adds placement layer order and opacity with 84 CPU tests/build passing. [Composition scope](ARTWORK_COMPOSITION.md) records remaining live checks.
+[Draft PR #3](https://github.com/notlestat/FORM/pull/3) is open against `main`, with the composition implementation at `3d89f8a`. The current composition step is on `codex/artwork-composition`, based on FIELD commit `5aac947b97e79956e3c6752f488758a2d88d4883`. It adds placement layer order and opacity with 84 CPU tests/build passing. [Composition scope](ARTWORK_COMPOSITION.md) records remaining live checks.
 
 [Draft PR #2](https://github.com/notlestat/FORM/pull/2) remains open against `main` for the first connected FIELD build. No PR is merged. Since `main` still contains only initialization, the composition branch also inherits the complete prototype and FIELD implementation. The new review should assess composition against PR #2's head while treating the full main-target diff as inherited context.
 
