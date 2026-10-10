@@ -1,6 +1,6 @@
 # Artwork spacing
 
-10 October 2026. Branch: `codex/artwork-spacing`, based on alignment/fix head 85840d88a7fe78ae5841551d1c89576e2160c12b.
+10 October 2026. [Draft PR #5](https://github.com/notlestat/FORM/pull/5) is open/unmerged. Branch: `codex/artwork-spacing`, based on alignment/fix head 85840d88a7fe78ae5841551d1c89576e2160c12b.
 
 Select at least three artworks, then use Distribute selection in the inspector: Horizontal gaps, Vertical gaps, Horizontal centres or Vertical centres. Both outer placements stay fixed; interior artwork moves along the chosen axis. Selection order and layer order do not determine the distribution: artworks are ordered spatially by their transformed rectangle centres, with stable ID tie-breaking.
 
