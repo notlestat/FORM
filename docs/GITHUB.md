@@ -4,7 +4,7 @@
 
 Repository: [notlestat/FORM](https://github.com/notlestat/FORM), public at Corey's explicit request.
 
-The first `main` commit contains repository initialization and the development workflow. The complete AFTERIMAGE prototype is on `codex/painted-subject-mask` for review. Because the local project had no previous commits, the first implementation PR includes the whole prototype, not only the latest painted selection.
+The first `main` commit contains repository initialization and the development workflow. The complete AFTERIMAGE prototype is on `codex/painted-subject-mask` in [PR #1](https://github.com/notlestat/FORM/pull/1), open for review and unmerged. Because the local project had no previous commits, the first implementation PR includes the whole prototype, not only the latest painted selection.
 
 The implementation includes guided photographic exposures, source selections, direct trajectory drawing, per-study undo/redo, up to four independent studies, portable `.form` projects and tiled transparent PNG export. Planning documents and recorded experiment evidence are included.
 

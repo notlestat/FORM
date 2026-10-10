@@ -110,10 +110,10 @@
     "branch": "codex/painted-subject-mask",
     "repository": "https://github.com/notlestat/FORM",
     "visibility": "public",
-    "pullRequest": "Complete prototype prepared for main-targeting review; see docs/GITHUB.md",
+    "pullRequest": "https://github.com/notlestat/FORM/pull/1",
     "merged": false,
-    "published": false,
-    "publicationNote": "Repository initialization is public; feature publication is recorded after remote verification"
+    "published": true,
+    "publicationNote": "Source branch pushed publicly on 10 October; this is not an application deployment or PR merge"
   },
   "notEstablished": [
     "Automatic subject detection",

@@ -51,4 +51,4 @@ Draw trajectory lets you sketch movement over the selected result, release to ap
 
 Painted subject selection now lets you paint and erase the source pixels that repeat. Choose Painted subject under Selection shape, then paint on the photograph. Each stroke is undoable; Save/Open retains the editable mask. See [selection scope, bounds and remaining rendering checks](docs/PAINTED_MASK.md).
 
-The [public GitHub repository](https://github.com/notlestat/FORM) was established on 10 October. The complete prototype is proposed on `codex/painted-subject-mask`; the initial `main` commit contains repository setup only. See [GitHub review workflow](docs/GITHUB.md).
+The [public GitHub repository](https://github.com/notlestat/FORM) was established on 10 October. The complete prototype is proposed in [PR #1](https://github.com/notlestat/FORM/pull/1) on `codex/painted-subject-mask`; the initial `main` commit contains repository setup only. See [GitHub review workflow](docs/GITHUB.md).
