@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-09",
+  "browser": "HeadlessChrome 154 on local macOS",
+  "size": 8192,
+  "pngBytes": 42074159,
+  "elapsedMs": 5211.70000000298,
+  "jsHeapBefore": 41427204,
+  "jsHeapAfter": 124165955,
+  "note": "JS heap snapshots only, not peak process/GPU memory. Blob completed but was not retained or independently decoded."
+}

@@ -1,0 +1,52 @@
+{
+  "backend": "PixiJS 8.22 context + isolated WebGL2 kernel",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+  "renderer": "WebKit WebGL",
+  "maxTextureSize": 16384,
+  "maxRenderbufferSize": 16384,
+  "floatColorBuffer": true,
+  "floatBlend": true,
+  "devicePixelRatio": 1,
+  "sourceDimensions": [
+    391,
+    623
+  ],
+  "timestamp": "2026-10-09T19:15:59.582Z",
+  "fixture": "Marble head / The Met",
+  "exposureCount": 9,
+  "capture": {
+    "x": -47.360000000000014,
+    "y": -101.36000000000001,
+    "width": 790.72,
+    "height": 790.72
+  },
+  "regionPivotIndependent": true,
+  "readbackInclusiveP50ms": 4,
+  "readbackInclusiveP95ms": 6.299999997019768,
+  "repeatedPixelBytesIdentical": true,
+  "tileComparisonSize": 2048,
+  "linearMixPixel": [
+    188,
+    188,
+    0,
+    255
+  ],
+  "linearMixPass": true,
+  "opacityPixel": [
+    255,
+    0,
+    0,
+    128
+  ],
+  "opacityPass": true,
+  "tileMaxChannelError": 1,
+  "tileMeanChannelError": 0.00011897087097167969,
+  "tilePass": true,
+  "estimatedSourceBytes": 974372,
+  "export4kBandAndTileBytes": 2621568,
+  "note": "Readback-inclusive wall time, not GPU timer. Same-device repeat only. Windows and Tauri untested.",
+  "exportPreviewComparisonSize": 768,
+  "exportPreviewMaxError": 1,
+  "exportPreviewPass": true
+}
