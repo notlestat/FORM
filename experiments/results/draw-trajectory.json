@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-09",
+  "scope": "One drawn polyline fitted to the existing editable cubic AFTERIMAGE trajectory",
+  "tests": {
+    "new": 7,
+    "total": 44,
+    "result": "pass",
+    "typescriptAndBuild": "pass"
+  },
+  "algorithm": {
+    "uniformArcLengthSamples": 33,
+    "maxCollectedPoints": 2048,
+    "minimumScreenStrokeLength": 6,
+    "arcCheck": {
+      "radius": 100,
+      "samples": 101,
+      "maxDistanceError": 0.280923985834489,
+      "requiredMaxError": 1,
+      "units": "source-coordinate units; not a GPU quality measurement"
+    }
+  },
+  "verified": [
+    "Uniform spatial fitting is independent of uneven pointer sample density",
+    "Exact endpoint retention and reversed movement direction",
+    "Taps/repeated/short strokes leave path unchanged",
+    "Bounded detached stroke collection retains newest endpoint",
+    "Invalid and oversized data reject without input mutation",
+    "Drawn geometry is one exact undo entry; cancelled transaction preserves redo",
+    "Capture remains unchanged and saved curve roundtrips exactly"
+  ],
+  "browser": {
+    "authorization": "User explicitly allowed local browser testing",
+    "status": "blocked",
+    "reason": "Saved user permission setting blocks localhost browser control despite renewed approval",
+    "unverified": [
+      "Actual pointer drawing",
+      "Escape, pointer cancellation and capture-loss lifecycle",
+      "Screen-to-artwork mapping at different zoom levels",
+      "Latest drawing controls layout",
+      "Browser download/reopen of newly drawn path"
+    ]
+  },
+  "fixture": {
+    "path": [
+      {
+        "x": 195.5,
+        "y": 311.5
+      },
+      {
+        "x": 281.33139692811943,
+        "y": 64.78486768278795
+      },
+      {
+        "x": 417.2909905439372,
+        "y": 401.1132084541378
+      },
+      {
+        "x": 550,
+        "y": 440
+      }
+    ],
+    "origin": "Codec-generated project, not browser download",
+    "bytes": 53043,
+    "sha256": "2bec1d977f7b88c16ef545e2d26e5fc74c874e65782a89be59be50ed22ee95eb",
+    "stroke": [
+      {
+        "x": 195.5,
+        "y": 311.5
+      },
+      {
+        "x": 245,
+        "y": 210
+      },
+      {
+        "x": 330,
+        "y": 230
+      },
+      {
+        "x": 430,
+        "y": 360
+      },
+      {
+        "x": 550,
+        "y": 440
+      }
+    ]
+  },
+  "limitations": [
+    "One smooth cubic; detailed loops/corners/multiple segments are simplified",
+    "No final interface approval",
+    "Native macOS/Windows and artistic quality gates remain open"
+  ]
+}
