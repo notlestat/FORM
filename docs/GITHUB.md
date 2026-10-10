@@ -1,0 +1,17 @@
+# GitHub review workflow
+
+[Draft PR #3](https://github.com/notlestat/FORM/pull/3) is open against `main`, with the composition implementation at `3d89f8a`. The current composition step is on `codex/artwork-composition`, based on FIELD commit `5aac947b97e79956e3c6752f488758a2d88d4883`. It adds placement layer order and opacity with 84 CPU tests/build passing. [Composition scope](ARTWORK_COMPOSITION.md) records remaining live checks.
+
+[Draft PR #2](https://github.com/notlestat/FORM/pull/2) remains open against `main` for the first connected FIELD build. No PR is merged. Since `main` still contains only initialization, the composition branch also inherits the complete prototype and FIELD implementation. The new review should assess composition against PR #2's head while treating the full main-target diff as inherited context.
+
+10 October 2026.
+
+Repository: [notlestat/FORM](https://github.com/notlestat/FORM), public at Corey's explicit request.
+
+The first `main` commit contains repository initialization and the development workflow. The complete AFTERIMAGE prototype is on `codex/painted-subject-mask` in [PR #1](https://github.com/notlestat/FORM/pull/1), open for review and unmerged. Because the local project had no previous commits, the first implementation PR includes the whole prototype, not only the latest painted selection.
+
+The implementation includes guided photographic exposures, source selections, direct trajectory drawing, per-study undo/redo, up to four independent studies, portable `.form` projects and tiled transparent PNG export. Planning documents and recorded experiment evidence are included.
+
+Local validation on 10 October passed all 52 tests and the TypeScript/production build. Live painted brush, Canvas2D feathering, GPU orientation/alpha and exported edges still need verification. Native platform checks and final interface approval remain open. See [selection scope](PAINTED_MASK.md) and [review status](REVIEW_STATUS.md).
+
+Pull requests target `main`. No merge is authorised without Corey's explicit approval.

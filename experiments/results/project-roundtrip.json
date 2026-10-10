@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-09",
+  "scope": "Codex in-app browser, local single AFTERIMAGE study",
+  "packageBytes": 52986,
+  "entriesSha256": {
+    "manifest.json": "95421747f97d88f8cf0367e12116006f5bf758f20e4af15c82a4ce3912627db9",
+    "document.json": "4be5cda38ad94138dab51f6a9e91c4e406f6753d1ad0f928845f170a2d71ecf6",
+    "assets/4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a.jpg": "4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a"
+  },
+  "actualBrowserDownloadsCompared": true,
+  "allEntriesByteIdentical": true,
+  "replacementCancelPreservedNameAndEndpoint": true,
+  "corruptCrcRejected": true,
+  "decodedDimensionMismatchRejected": true,
+  "failedOpenRetainedAuthoredControls": true,
+  "narrowLayout": {
+    "viewportWidth": 390,
+    "documentScrollWidth": 390,
+    "allHeaderButtonsWithinViewport": true
+  },
+  "automatedTests": 20,
+  "limits": [
+    "Browser download checkpoint, not confirmed durable disk write",
+    "No autosave or history persistence",
+    "One source and one operation",
+    "Native Mac and Windows not tested"
+  ]
+}

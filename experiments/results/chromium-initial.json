@@ -1,0 +1,27 @@
+{
+  "backend": "PixiJS 8.22 context + isolated WebGL2 kernel",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+  "renderer": "WebKit WebGL",
+  "maxTextureSize": 16384,
+  "maxRenderbufferSize": 16384,
+  "floatColorBuffer": true,
+  "floatBlend": true,
+  "devicePixelRatio": 2,
+  "sourceDimensions": [
+    391,
+    623
+  ],
+  "timestamp": "2026-10-09T13:54:11.828Z",
+  "fixture": "Marble head / The Met",
+  "exposureCount": 9,
+  "readbackInclusiveP50ms": 3.2999999970197678,
+  "readbackInclusiveP95ms": 5.300000004470348,
+  "repeatedPixelBytesIdentical": true,
+  "tileMaxChannelError": 1,
+  "tileMeanChannelError": 0.00002288818359375,
+  "tilePass": true,
+  "estimatedSourceBytes": 974372,
+  "export4kBandAndTileBytes": 2621568,
+  "note": "Readback-inclusive wall time, not GPU timer. Same-device repeat only. Windows and Tauri untested."
+}
