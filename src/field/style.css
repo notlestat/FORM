@@ -235,8 +235,7 @@ button.quiet {
 .objects-panel li {
   margin: 0;
 }
-.objects-panel li button,
-.capture-list {
+.objects-panel li button {
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -249,18 +248,13 @@ button.quiet {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-.objects-panel li small,
-.capture-list small {
+.objects-panel li small {
   font-size: 10px;
   color: var(--muted);
 }
 .objects-panel .selected {
   background: var(--active-surface);
   box-shadow: inset 3px 0 var(--active);
-}
-.capture-list {
-  margin-top: 20px;
-  border-block: 1px solid var(--rule);
 }
 .empty-help {
   font-size: 12px;
@@ -450,43 +444,6 @@ button.quiet {
 }
 .process-caption span {
   font-size: 10px;
-}
-.capture-outline {
-  position: absolute;
-  border: 1.5px dashed #6e786a;
-  pointer-events: none !important;
-  z-index: -2;
-}
-.capture-outline.selected-capture {
-  border-color: var(--active);
-  border-style: solid;
-}
-.capture-label {
-  position: absolute;
-  left: 0;
-  bottom: 100%;
-  transform-origin: bottom left;
-  font-size: 11px;
-  min-height: 24px;
-  border: 0;
-  background: var(--field);
-  padding: 3px 8px;
-  pointer-events: auto;
-  cursor: move;
-}
-.capture-handle {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 15px;
-  height: 15px;
-  min-height: 0;
-  padding: 0;
-  border: 1px solid var(--active);
-  background: var(--paper);
-  transform-origin: center;
-  pointer-events: auto;
-  cursor: nwse-resize;
 }
 .transform-handle {
   position: absolute;
@@ -710,11 +667,6 @@ polyline.brush-ink {
 .path-row {
   padding-top: 3px;
 }
-.capture-members {
-  margin-top: 16px;
-  padding-top: 8px;
-  border-top: 1px solid var(--rule);
-}
 .status-strip {
   min-height: 28px;
   display: flex;
@@ -829,12 +781,6 @@ polyline.brush-ink {
 }
 .proof-dark .art-label small {
   color: #bec6b8;
-}
-.proof-dark .capture-label {
-  color: #d0d8c8;
-}
-.proof-dark .capture-outline {
-  border-color: #a8b59c;
 }
 .proof-dark .dependency-lines text {
   fill: #bac6b0;

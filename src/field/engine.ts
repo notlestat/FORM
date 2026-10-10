@@ -302,7 +302,7 @@ export class FieldEvaluator {
           .reduce((sum, o) => sum + o.image.width * o.image.height * 4, 0);
         if (quality === "export" && allocated + w * h * 4 > 192 * 1024 * 1024)
           throw Error(
-            "This export needs more than the 192 MiB intermediate-image budget. Capture fewer independent outputs or shorten the processing chain.",
+            "This export needs more than the 192 MiB intermediate-image budget. Include fewer independent outputs or shorten the processing chain.",
           );
         const r = await this.backend();
         abortIf(signal);

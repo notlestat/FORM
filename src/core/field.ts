@@ -558,6 +558,61 @@ export function transformedBounds(r: Rect, t: Transform): Rect {
     height: Math.max(...corners.map((p) => p.y)) - y,
   };
 }
+export function resizeArtwork(
+  t: Transform,
+  pointer: Point,
+  width: number,
+  height: number,
+  proportional: boolean,
+): Transform {
+  const local = fromWorld(pointer, { ...t, scaleX: 1, scaleY: 1 });
+  if (proportional) {
+    const x = width * t.scaleX,
+      y = height * t.scaleY;
+    const factor = Math.max(
+      0.05 / Math.min(Math.abs(t.scaleX), Math.abs(t.scaleY)),
+      Math.min(
+        8 / Math.max(Math.abs(t.scaleX), Math.abs(t.scaleY)),
+        (local.x * x + local.y * y) / (x * x + y * y),
+      ),
+    );
+    return { ...t, scaleX: t.scaleX * factor, scaleY: t.scaleY * factor };
+  }
+  return {
+    ...t,
+    scaleX:
+      Math.sign(t.scaleX) *
+      Math.max(0.05, Math.min(8, Math.abs(local.x / width))),
+    scaleY:
+      Math.sign(t.scaleY) *
+      Math.max(0.05, Math.min(8, Math.abs(local.y / height))),
+  };
+}
+export function artworkBounds(
+  placements: Placement[],
+  outputs: Map<string, { width: number; height: number }>,
+): Rect {
+  const bounds = placements
+    .filter((p) => p.visible && p.included)
+    .map((p) => {
+      const r = outputs.get(p.nodeId);
+      if (!r) fail("Render the included artwork before exporting.");
+      return transformedBounds(
+        { x: 0, y: 0, width: r.width, height: r.height },
+        p.transform,
+      );
+    });
+  if (!bounds.length)
+    fail("Include at least one artwork placement in the export.");
+  const x = Math.min(...bounds.map((r) => r.x)),
+    y = Math.min(...bounds.map((r) => r.y));
+  return {
+    x,
+    y,
+    width: Math.max(...bounds.map((r) => r.x + r.width)) - x,
+    height: Math.max(...bounds.map((r) => r.y + r.height)) - y,
+  };
+}
 export function screenToField(p: Point, c: Camera): Point {
   return { x: (p.x - c.x) / c.scale, y: (p.y - c.y) / c.scale };
 }

@@ -1,5 +1,9 @@
 # Architecture decisions
 
+## 10 October: open canvas interaction
+
+D25, requested by Corey: remove the board capture rectangle and its controls. Compose on the open field; derive export bounds from visible included artwork. Retain stored capture metadata only for compatibility, without applying its old crop. Delete/Backspace routes the selection through the same undoable removal command as the inspector. Shift-drag preserves current artwork proportions. CPU tests cover rotated/reflected proportional resize and automatic bounds; live pointer/keyboard checks remain pending.
+
 ## 10 October: first FIELD implementation
 
 D22, authorised first FIELD build: Corey's request to build the whole first build supersedes the earlier bounded-experiment-only implementation gate. Complete the brief's FIELD journey with AFTERIMAGE first; retain FRAME/LIVE/cameras/native hosting as future milestones. The ten-item implementation/evidence map is in [FIRST_BUILD.md](FIRST_BUILD.md).

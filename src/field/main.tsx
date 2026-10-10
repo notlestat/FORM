@@ -23,6 +23,7 @@ import {
 import { exportPNG, download } from "../../experiments/afterimage/export";
 import {
   addAfterimage,
+  artworkBounds,
   connect,
   decodeField,
   emptyField,
@@ -34,6 +35,7 @@ import {
   outputType,
   removeNode,
   replaceImage,
+  resizeArtwork,
   screenToField,
   toWorld,
   transformedBounds,
@@ -59,9 +61,8 @@ import type { Evaluation, Raster } from "./engine";
 import { RecoveryStore } from "../platform/recovery";
 import type { RecoverySnapshot } from "../platform/recovery";
 
-type Selection =
-  { kind: "node" | "placement"; id: string } | { kind: "capture" } | null;
-type Mode = "select" | "trajectory" | "selection" | "capture";
+type Selection = { kind: "node" | "placement"; id: string } | null;
+type Mode = "select" | "trajectory" | "selection";
 type Prepared = {
   document: FieldDocument;
   assets: AssetRegistry;
@@ -78,7 +79,6 @@ const buttonLabel: Record<Mode, string> = {
   select: "Select",
   trajectory: "Trajectory",
   selection: "Selection",
-  capture: "Capture",
 };
 const friendly = (error: unknown) =>
   error instanceof Error ? error.message : "The operation failed.";
@@ -326,6 +326,24 @@ function FieldApp() {
     (p) => p.nodeId === imageEdge?.from && p.visible,
   );
   const locked = busy || !!pending || gestureActive;
+  const deleteSelection = () => {
+    if (locked || !selection) return;
+    if (selection.kind === "placement") {
+      execute("Remove artwork placement", (d) => {
+        d.placements = d.placements.filter((p) => p.id !== selection.id);
+      });
+      setNotice(
+        "Artwork removed. Undo restores it; linked copies and its process remain.",
+      );
+    } else if (selection.kind === "node") {
+      execute("Delete process object", (d) => removeNode(d, selection.id));
+      setNotice(
+        "Object and its views removed; downstream inputs disconnected. Undo restores them.",
+      );
+    } else return;
+    setSelection(null);
+    setBranchId(null);
+  };
   const [replacePolicy, setReplacePolicy] = useState<"scale" | "keep">("scale");
   const select = (s: Selection) => {
     if (locked) return;
@@ -529,14 +547,28 @@ function FieldApp() {
   useEffect(() => {
     const keyDown = (e: KeyboardEvent) => {
       const editing =
-        e.target instanceof HTMLElement &&
-        !!e.target.closest("input,textarea,select,[contenteditable=true]");
+        e.target instanceof Element &&
+        !!e.target.closest(
+          "input,textarea,select,[contenteditable]:not([contenteditable=false])",
+        );
       if (e.key === "Escape" && gesture.current) {
         e.preventDefault();
         gesture.current();
         return;
       }
       if (editing) return;
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        selection &&
+        !locked
+      ) {
+        e.preventDefault();
+        if (!e.repeat && !e.isComposing) deleteSelection();
+        return;
+      }
       if (e.key === " ") {
         e.preventDefault();
         space.current = true;
@@ -604,8 +636,8 @@ function FieldApp() {
   const runGesture = (
     e: React.PointerEvent,
     label: string,
-    move: (p: Point) => void,
-    finish?: (p: Point) => void,
+    move: (p: Point, event: PointerEvent) => void,
+    finish?: (p: Point, event: PointerEvent) => void,
     authored = true,
   ) => {
     if (
@@ -644,7 +676,7 @@ function FieldApp() {
     const onMove = (v: PointerEvent) => {
       if (v.pointerId !== pointerId) return;
       try {
-        move(worldPoint(v));
+        move(worldPoint(v), v);
         if (authored) sync();
       } catch (e) {
         cancel();
@@ -654,7 +686,7 @@ function FieldApp() {
     const onEnd = (v: PointerEvent) => {
       if (v.pointerId !== pointerId) return;
       try {
-        finish?.(worldPoint(v));
+        finish?.(worldPoint(v), v);
         if (authored) {
           commands.current.commit();
           sync();
@@ -746,7 +778,7 @@ function FieldApp() {
     runGesture(
       e,
       kind === "scale" ? "Scale artwork" : "Rotate artwork",
-      (point) =>
+      (point, event) =>
         commands.current.execute("Transform artwork", (d) => {
           const item = d.placements.find((v) => v.id === p.id)!;
           if (kind === "rotate")
@@ -757,21 +789,13 @@ function FieldApp() {
                 180) /
                 Math.PI;
           else {
-            const local = fromWorld(point, {
-              ...initial,
-              scaleX: 1,
-              scaleY: 1,
-            });
-            const sx = Math.max(
-                0.05,
-                Math.min(8, Math.abs(local.x / raster.width)),
-              ),
-              sy = Math.max(
-                0.05,
-                Math.min(8, Math.abs(local.y / raster.height)),
-              );
-            item.transform.scaleX = Math.sign(initial.scaleX) * sx;
-            item.transform.scaleY = Math.sign(initial.scaleY) * sy;
+            item.transform = resizeArtwork(
+              initial,
+              point,
+              raster.width,
+              raster.height,
+              event.shiftKey,
+            );
           }
         }),
     );
@@ -975,61 +999,14 @@ function FieldApp() {
       setError(friendly(e));
     }
   }
-  function captureDown(e: React.PointerEvent) {
-    if (space.current || e.button === 1) {
-      pan(e);
-      return;
-    }
-    if (mode !== "capture") {
-      select(null);
-      return;
-    }
-    const first = worldPoint(e);
-    setSelection({ kind: "capture" });
-    runGesture(
-      e,
-      "Draw capture",
-      (p) =>
-        commands.current.execute("Draw capture", (d) => {
-          d.capture = {
-            x: Math.min(first.x, p.x),
-            y: Math.min(first.y, p.y),
-            width: Math.max(1, Math.abs(p.x - first.x)),
-            height: Math.max(1, Math.abs(p.y - first.y)),
-          };
-        }),
-      (p) => {
-        if (Math.hypot(p.x - first.x, p.y - first.y) < 4)
-          throw Error(
-            "Drag a capture rectangle. The previous capture is retained.",
-          );
-      },
-    );
-  }
-  function moveCapture(e: React.PointerEvent, resize = false) {
-    if (space.current || e.button === 1) {
-      pan(e);
-      return;
-    }
-    const first = worldPoint(e),
-      old = { ...doc.capture };
-    runGesture(e, resize ? "Resize capture" : "Move capture", (p) =>
-      commands.current.execute("Edit capture", (d) => {
-        d.capture = resize
-          ? {
-              ...old,
-              width: Math.max(1, old.width + p.x - first.x),
-              height: Math.max(1, old.height + p.y - first.y),
-            }
-          : { ...old, x: old.x + p.x - first.x, y: old.y + p.y - first.y };
-      }),
-    );
+  function canvasDown(e: React.PointerEvent) {
+    if (space.current || e.button === 1) pan(e);
+    else select(null);
   }
   function fitView() {
     if (!field.current || locked) return;
     let bounds: Rect[] = [];
-    if (selection?.kind === "capture") bounds = [doc.capture];
-    else if (currentPlacement) {
+    if (currentPlacement) {
       const r = result.outputs.get(currentPlacement.nodeId);
       if (r)
         bounds = [
@@ -1082,36 +1059,6 @@ function FieldApp() {
       y: h / 2 - ((minY + maxY) / 2) * scale,
       scale,
     });
-  }
-  function fitCapture() {
-    const bounds = doc.placements
-      .filter((p) => p.visible && p.included)
-      .map((p) => {
-        const r = result.outputs.get(p.nodeId);
-        if (!r) throw Error(`Render ${p.name} before fitting capture.`);
-        return transformedBounds(
-          { x: 0, y: 0, width: r.width, height: r.height },
-          p.transform,
-        );
-      });
-    if (!bounds.length) {
-      setError("Include at least one artwork placement in the capture.");
-      return;
-    }
-    const x = Math.min(...bounds.map((b) => b.x)),
-      y = Math.min(...bounds.map((b) => b.y)),
-      width = Math.max(...bounds.map((b) => b.x + b.width)) - x,
-      height = Math.max(...bounds.map((b) => b.y + b.height)) - y,
-      edge = Math.max(width, height) * 1.06;
-    execute("Fit capture to artwork", (d) => {
-      d.capture = {
-        x: x + (width - edge) / 2,
-        y: y + (height - edge) / 2,
-        width: edge,
-        height: edge,
-      };
-    });
-    setSelection({ kind: "capture" });
   }
   function createOperation() {
     const image =
@@ -1211,7 +1158,7 @@ function FieldApp() {
       setNotice(
         asMask
           ? "Imported luminance × alpha as selection coverage."
-          : "Photograph placed. Create AFTERIMAGE or include it directly in the capture.",
+          : "Photograph placed. Create AFTERIMAGE or include it directly in the export.",
       );
     } catch (e) {
       if (preparedId && !originalAssets.has(preparedId))
@@ -1378,12 +1325,12 @@ function FieldApp() {
       setBusy(false);
     }
   }
-  async function exportCapture(size = 4096) {
+  async function exportArtwork(size = 4096) {
     if (locked) return;
     const d = snapshot(),
       included = d.placements.filter((p) => p.visible && p.included);
     if (!included.length) {
-      setError("Include artwork in the capture before exporting.");
+      setError("Include artwork in the export first.");
       return;
     }
     setBusy(true);
@@ -1393,7 +1340,7 @@ function FieldApp() {
     abortExport.current = controller;
     const engine = new FieldEvaluator();
     try {
-      setNotice("Evaluating the frozen capture at export quality.");
+      setNotice("Evaluating the included artwork at export quality.");
       const results = await engine.evaluate(
         d,
         assets.current,
@@ -1403,7 +1350,8 @@ function FieldApp() {
       );
       if (results.errors.size)
         throw Error([...results.errors.values()].join(" "));
-      const ratio = d.capture.width / d.capture.height,
+      const region = artworkBounds(d.placements, results.outputs);
+      const ratio = region.width / region.height,
         dimensions =
           ratio >= 1
             ? { width: size, height: Math.max(1, Math.round(size / ratio)) }
@@ -1412,7 +1360,7 @@ function FieldApp() {
         blob = await exportPNG(
           renderer,
           defaults(1, 1),
-          d.capture,
+          region,
           dimensions,
           setProgress,
           controller.signal,
@@ -1424,7 +1372,7 @@ function FieldApp() {
         `${cleanName(d.name)}-${dimensions.width}x${dimensions.height}.png`,
       );
       setNotice(
-        `Transparent ${dimensions.width} × ${dimensions.height} PNG prepared from the frozen capture.`,
+        `Transparent ${dimensions.width} × ${dimensions.height} PNG prepared from the included artwork.`,
       );
     } catch (e) {
       setNotice(
@@ -1461,10 +1409,11 @@ function FieldApp() {
       if (evaluated.errors.size)
         throw Error([...evaluated.errors.values()].join(" "));
       const renderer = new CaptureRenderer(state.placements, evaluated.outputs),
-        ratio = state.capture.width / state.capture.height,
+        region = artworkBounds(state.placements, evaluated.outputs),
+        ratio = region.width / region.height,
         w = ratio >= 1 ? 512 : Math.max(1, Math.round(512 * ratio)),
         h = ratio >= 1 ? Math.max(1, Math.round(512 / ratio)) : 512;
-      renderer.draw(defaults(1, 1), state.capture, w, h);
+      renderer.draw(defaults(1, 1), region, w, h);
       const full = renderer.read(),
         tiled = new Uint8Array(full.length);
       for (let y = 0; y < h; y += 64)
@@ -1474,10 +1423,10 @@ function FieldApp() {
           renderer.draw(
             defaults(1, 1),
             {
-              x: state.capture.x + (x / w) * state.capture.width,
-              y: state.capture.y + (y / h) * state.capture.height,
-              width: (tw / w) * state.capture.width,
-              height: (th / h) * state.capture.height,
+              x: region.x + (x / w) * region.width,
+              y: region.y + (y / h) * region.height,
+              width: (tw / w) * region.width,
+              height: (th / h) * region.height,
             },
             tw,
             th,
@@ -1583,9 +1532,7 @@ function FieldApp() {
       ? "Drag artwork to compose. Space-drag pans; pinch zooms; F fits."
       : mode === "trajectory"
         ? "Draw on the selected output or move its handles. Escape cancels."
-        : mode === "selection"
-          ? "Edit selection on the input photograph. Paint or draw a boundary; Escape cancels."
-          : "Drag a capture rectangle. Only included artwork exports.";
+        : "Edit selection on the input photograph. Paint or draw a boundary; Escape cancels.";
   return (
     <div className={`form-app proof-${proof}`}>
       <header className="command-strip">
@@ -1628,7 +1575,7 @@ function FieldApp() {
           <button
             className="primary"
             disabled={locked || !renderable}
-            onClick={() => void exportCapture()}
+            onClick={() => void exportArtwork()}
           >
             Export PNG
           </button>
@@ -1655,7 +1602,6 @@ function FieldApp() {
               aria-pressed={mode === key}
               onClick={() => {
                 setMode(key);
-                if (key === "capture") setSelection({ kind: "capture" });
               }}
             >
               {buttonLabel[key]}
@@ -1737,7 +1683,7 @@ function FieldApp() {
                     <small>
                       {p.visible
                         ? p.included
-                          ? "In capture"
+                          ? "In export"
                           : "Reference"
                         : "Hidden"}
                       {doc.placements.filter((q) => q.nodeId === p.nodeId)
@@ -1770,21 +1716,6 @@ function FieldApp() {
                 </li>
               ))}
             </ul>
-            <button
-              className={
-                selection?.kind === "capture"
-                  ? "capture-list selected"
-                  : "capture-list"
-              }
-              disabled={locked}
-              onClick={() => select({ kind: "capture" })}
-            >
-              Capture
-              <small>
-                {Math.round(doc.capture.width)} ×{" "}
-                {Math.round(doc.capture.height)} units
-              </small>
-            </button>
             {!doc.nodes.length && (
               <p className="empty-help">
                 Place a photograph to start. Sources stay intact while
@@ -1798,7 +1729,7 @@ function FieldApp() {
           className={`field-stage mode-${mode}`}
           aria-label="Spatial FIELD workspace"
           onPointerDown={(e) => {
-            if (e.target === e.currentTarget) captureDown(e);
+            if (e.target === e.currentTarget) canvasDown(e);
           }}
         >
           <div className="field-help">{modeHelp}</div>
@@ -1851,39 +1782,6 @@ function FieldApp() {
                   );
                 })}
             </svg>
-            <div
-              className={`capture-outline ${selection?.kind === "capture" ? "selected-capture" : ""}`}
-              style={{
-                left: doc.capture.x,
-                top: doc.capture.y,
-                width: doc.capture.width,
-                height: doc.capture.height,
-                borderWidth: 1.5 / camera.scale,
-              }}
-            >
-              <button
-                className="capture-label"
-                style={{
-                  transform: `scale(${1 / camera.scale})`,
-                  transformOrigin: "bottom left",
-                }}
-                disabled={locked}
-                onPointerDown={(e) => {
-                  setSelection({ kind: "capture" });
-                  moveCapture(e);
-                }}
-              >
-                Capture
-              </button>
-              {(mode === "capture" || selection?.kind === "capture") && (
-                <button
-                  className="capture-handle"
-                  aria-label="Resize capture"
-                  style={{ transform: `scale(${1 / camera.scale})` }}
-                  onPointerDown={(e) => moveCapture(e, true)}
-                />
-              )}
-            </div>
             {doc.placements
               .filter((p) => p.visible)
               .map((placement) => {
@@ -1953,12 +1851,7 @@ function FieldApp() {
                     <div
                       className="visual-body"
                       onPointerDown={(e) => {
-                        if (
-                          mode === "capture" ||
-                          space.current ||
-                          e.button === 1
-                        )
-                          captureDown(e);
+                        if (space.current || e.button === 1) canvasDown(e);
                         else movePlacement(e, placement);
                       }}
                     >
@@ -2347,19 +2240,17 @@ function FieldApp() {
           <aside className="inspector" aria-label="Contextual inspector">
             <div className="panel-heading">
               <h2>
-                {selection?.kind === "capture"
-                  ? "Capture"
-                  : currentPlacement
-                    ? "Artwork"
-                    : currentNode
-                      ? currentNode.kind === "image"
-                        ? "Photograph"
-                        : currentNode.kind === "afterimage"
-                          ? "AFTERIMAGE"
-                          : currentNode.kind === "trajectory"
-                            ? "Trajectory"
-                            : "Selection"
-                      : "Field"}
+                {currentPlacement
+                  ? "Artwork"
+                  : currentNode
+                    ? currentNode.kind === "image"
+                      ? "Photograph"
+                      : currentNode.kind === "afterimage"
+                        ? "AFTERIMAGE"
+                        : currentNode.kind === "trajectory"
+                          ? "Trajectory"
+                          : "Selection"
+                    : "Field"}
               </h2>
               <button className="quiet" onClick={() => setShowInspector(false)}>
                 Hide
@@ -2467,14 +2358,14 @@ function FieldApp() {
                     onChange={(e) =>
                       patchPlacement(
                         currentPlacement.id,
-                        "Change capture membership",
+                        "Change export membership",
                         (p) => {
                           p.included = e.target.checked;
                         },
                       )
                     }
                   />
-                  Include in capture
+                  Include in export
                 </label>
                 <label className="check-control">
                   <input
@@ -2539,20 +2430,14 @@ function FieldApp() {
                   </button>
                 </div>
                 <p className="control-help">
-                  Artwork transforms affect composition and export. Linked
-                  copies share a process; variations have independent guides.
+                  Hold Shift while resizing to preserve proportions. Artwork
+                  transforms affect composition and export. Linked copies share
+                  a process; variations have independent guides.
                 </p>
                 <button
                   className="danger"
                   disabled={locked}
-                  onClick={() => {
-                    execute("Remove artwork placement", (d) => {
-                      d.placements = d.placements.filter(
-                        (p) => p.id !== currentPlacement.id,
-                      );
-                    });
-                    setSelection(null);
-                  }}
+                  onClick={deleteSelection}
                 >
                   Remove this placement
                 </button>
@@ -2639,8 +2524,8 @@ function FieldApp() {
                     <p className="control-help">
                       Replacement affects every process connected to this
                       source. Variations have independent source objects.
-                      Selections keep their relative position; capture and
-                      placement stay fixed.
+                      Selections keep their relative position; artwork placement
+                      stays fixed.
                     </p>
                     <button
                       disabled={locked}
@@ -2654,287 +2539,362 @@ function FieldApp() {
                   <button
                     className="danger"
                     disabled={locked}
-                    onClick={() => {
-                      execute("Delete process object", (d) =>
-                        removeNode(d, currentNode.id),
-                      );
-                      setSelection(null);
-                      setNotice(
-                        "Object and its views removed; downstream inputs disconnected. Undo restores them.",
-                      );
-                    }}
+                    onClick={deleteSelection}
                   >
                     Delete object and its views
                   </button>
                 )}
               </section>
             )}
-            {operation?.kind === "afterimage" &&
-              selection?.kind !== "capture" && (
-                <section className="inspector-section">
-                  <h3>Exposures</h3>
-                  <div className="number-grid">
-                    <NumberField
-                      label="Count"
-                      min={1}
-                      max={64}
-                      value={operation.params.count}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("count", n)}
-                    />
-                    <NumberField
-                      label="Opacity"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={operation.params.opacity}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("opacity", n)}
-                    />
-                    <NumberField
-                      label="Falloff"
-                      min={0}
-                      max={2}
-                      step={0.05}
-                      value={operation.params.falloff}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("falloff", n)}
-                    />
-                    <NumberField
-                      label="Distribution"
-                      min={0.2}
-                      max={4}
-                      step={0.1}
-                      value={operation.params.distribution}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("distribution", n)}
-                    />
-                  </div>
-                  <label className="select-control">
-                    Accumulation
-                    <select
-                      value={operation.params.mode}
-                      disabled={locked}
-                      onChange={(e) =>
-                        changeParameter(
-                          "mode",
-                          e.target.value as Params["mode"],
-                        )
-                      }
-                    >
-                      <option value="ghosts">Ordered ghosts</option>
-                      <option value="exposure">Normalized exposure</option>
-                    </select>
-                  </label>
-                  <label className="check-control">
-                    <input
-                      type="checkbox"
-                      checked={operation.params.follow}
-                      disabled={locked}
-                      onChange={(e) =>
-                        changeParameter("follow", e.target.checked)
-                      }
-                    />
-                    Follow trajectory direction
-                  </label>
-                  <div className="number-grid">
-                    <NumberField
-                      label="Variation"
-                      min={0}
-                      max={1000}
-                      value={operation.params.jitter}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("jitter", n)}
-                    />
-                    <NumberField
-                      label="Locked seed"
-                      min={0}
-                      max={4294967295}
-                      value={operation.params.seed}
-                      disabled={locked}
-                      onCommit={(n) => changeParameter("seed", n)}
-                    />
-                  </div>
-                  <button
+            {operation?.kind === "afterimage" && (
+              <section className="inspector-section">
+                <h3>Exposures</h3>
+                <div className="number-grid">
+                  <NumberField
+                    label="Count"
+                    min={1}
+                    max={64}
+                    value={operation.params.count}
                     disabled={locked}
-                    onClick={() =>
-                      changeParameter(
-                        "seed",
-                        crypto.getRandomValues(new Uint32Array(1))[0],
-                      )
+                    onCommit={(n) => changeParameter("count", n)}
+                  />
+                  <NumberField
+                    label="Opacity"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={operation.params.opacity}
+                    disabled={locked}
+                    onCommit={(n) => changeParameter("opacity", n)}
+                  />
+                  <NumberField
+                    label="Falloff"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={operation.params.falloff}
+                    disabled={locked}
+                    onCommit={(n) => changeParameter("falloff", n)}
+                  />
+                  <NumberField
+                    label="Distribution"
+                    min={0.2}
+                    max={4}
+                    step={0.1}
+                    value={operation.params.distribution}
+                    disabled={locked}
+                    onCommit={(n) => changeParameter("distribution", n)}
+                  />
+                </div>
+                <label className="select-control">
+                  Accumulation
+                  <select
+                    value={operation.params.mode}
+                    disabled={locked}
+                    onChange={(e) =>
+                      changeParameter("mode", e.target.value as Params["mode"])
                     }
                   >
-                    New seed
+                    <option value="ghosts">Ordered ghosts</option>
+                    <option value="exposure">Normalized exposure</option>
+                  </select>
+                </label>
+                <label className="check-control">
+                  <input
+                    type="checkbox"
+                    checked={operation.params.follow}
+                    disabled={locked}
+                    onChange={(e) =>
+                      changeParameter("follow", e.target.checked)
+                    }
+                  />
+                  Follow trajectory direction
+                </label>
+                <div className="number-grid">
+                  <NumberField
+                    label="Variation"
+                    min={0}
+                    max={1000}
+                    value={operation.params.jitter}
+                    disabled={locked}
+                    onCommit={(n) => changeParameter("jitter", n)}
+                  />
+                  <NumberField
+                    label="Locked seed"
+                    min={0}
+                    max={4294967295}
+                    value={operation.params.seed}
+                    disabled={locked}
+                    onCommit={(n) => changeParameter("seed", n)}
+                  />
+                </div>
+                <button
+                  disabled={locked}
+                  onClick={() =>
+                    changeParameter(
+                      "seed",
+                      crypto.getRandomValues(new Uint32Array(1))[0],
+                    )
+                  }
+                >
+                  New seed
+                </button>
+                <div className="action-pair">
+                  <button
+                    disabled={locked}
+                    aria-pressed={mode === "trajectory"}
+                    onClick={() => setMode("trajectory")}
+                  >
+                    Edit trajectory
                   </button>
-                  <div className="action-pair">
-                    <button
-                      disabled={locked}
-                      aria-pressed={mode === "trajectory"}
-                      onClick={() => setMode("trajectory")}
-                    >
-                      Edit trajectory
-                    </button>
-                    <button
-                      disabled={locked || !maskNode}
-                      aria-pressed={mode === "selection"}
-                      onClick={() => {
-                        setMode("selection");
-                        if (inputPlacement)
-                          setSelection({
-                            kind: "placement",
-                            id: inputPlacement.id,
-                          });
-                      }}
-                    >
-                      Edit selection
-                    </button>
-                  </div>
-                  <details>
-                    <summary>Output frame</summary>
-                    <p className="control-help">
-                      The operation frame controls which source-space area is
-                      rendered. The capture is the final composition crop.
-                    </p>
-                    {operation.frame ? (
-                      <>
-                        <div className="number-grid">
-                          {(["x", "y", "width", "height"] as const).map(
-                            (key) => (
-                              <NumberField
-                                key={key}
-                                label={`Output ${key}`}
-                                value={operation.frame![key]}
-                                disabled={locked}
-                                min={
-                                  key === "width" || key === "height"
-                                    ? 1
-                                    : undefined
-                                }
-                                onCommit={(v) =>
-                                  patchNode(
-                                    operation.id,
-                                    "Edit output frame",
-                                    (n) => {
-                                      if (n.kind === "afterimage" && n.frame)
-                                        n.frame[key] = v;
-                                    },
-                                  )
-                                }
-                              />
-                            ),
-                          )}
-                        </div>
-                        <button
-                          disabled={locked}
-                          onClick={() =>
-                            patchNode(
-                              operation.id,
-                              "Fit operation frame",
-                              (n) => {
-                                if (n.kind === "afterimage") n.frame = null;
-                              },
-                            )
-                          }
-                        >
-                          Fit operation frame
-                        </button>
-                      </>
-                    ) : (
+                  <button
+                    disabled={locked || !maskNode}
+                    aria-pressed={mode === "selection"}
+                    onClick={() => {
+                      setMode("selection");
+                      if (inputPlacement)
+                        setSelection({
+                          kind: "placement",
+                          id: inputPlacement.id,
+                        });
+                    }}
+                  >
+                    Edit selection
+                  </button>
+                </div>
+                <details>
+                  <summary>Output frame</summary>
+                  <p className="control-help">
+                    The operation frame controls which source-space area is
+                    rendered. Export automatically fits the included artwork.
+                  </p>
+                  {operation.frame ? (
+                    <>
+                      <div className="number-grid">
+                        {(["x", "y", "width", "height"] as const).map((key) => (
+                          <NumberField
+                            key={key}
+                            label={`Output ${key}`}
+                            value={operation.frame![key]}
+                            disabled={locked}
+                            min={
+                              key === "width" || key === "height"
+                                ? 1
+                                : undefined
+                            }
+                            onCommit={(v) =>
+                              patchNode(
+                                operation.id,
+                                "Edit output frame",
+                                (n) => {
+                                  if (n.kind === "afterimage" && n.frame)
+                                    n.frame[key] = v;
+                                },
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
                       <button
-                        disabled={locked || !result.outputs.get(operation.id)}
+                        disabled={locked}
                         onClick={() =>
                           patchNode(
                             operation.id,
-                            "Fix operation frame",
+                            "Fit operation frame",
                             (n) => {
-                              if (n.kind === "afterimage")
-                                n.frame = {
-                                  ...result.outputs.get(n.id)!.region,
-                                };
+                              if (n.kind === "afterimage") n.frame = null;
                             },
                           )
                         }
                       >
-                        Keep current frame
+                        Fit operation frame
                       </button>
-                    )}
-                  </details>
-                </section>
-              )}
-            {actualPath &&
-              operation?.kind === "afterimage" &&
-              selection?.kind !== "capture" && (
-                <section className="inspector-section">
-                  <details
-                    open={
-                      currentNode?.kind === "trajectory" ||
-                      mode === "trajectory"
-                    }
+                    </>
+                  ) : (
+                    <button
+                      disabled={locked || !result.outputs.get(operation.id)}
+                      onClick={() =>
+                        patchNode(operation.id, "Fix operation frame", (n) => {
+                          if (n.kind === "afterimage")
+                            n.frame = {
+                              ...result.outputs.get(n.id)!.region,
+                            };
+                        })
+                      }
+                    >
+                      Keep current frame
+                    </button>
+                  )}
+                </details>
+              </section>
+            )}
+            {actualPath && operation?.kind === "afterimage" && (
+              <section className="inspector-section">
+                <details
+                  open={
+                    currentNode?.kind === "trajectory" || mode === "trajectory"
+                  }
+                >
+                  <summary>Trajectory points</summary>
+                  <p className="control-help">
+                    Draw over the output or edit source-space coordinates. One
+                    smooth cubic is retained.
+                  </p>
+                  {actualPath.map((p, i) => (
+                    <div className="number-grid path-row" key={i}>
+                      <NumberField
+                        label={`Point ${i + 1} X`}
+                        value={p.x}
+                        disabled={locked}
+                        onCommit={(v) =>
+                          execute("Shape trajectory", (d) => {
+                            const n = d.nodes.find(
+                              (n) => n.id === pathNode?.id,
+                            );
+                            if (n?.kind === "trajectory") n.points[i].x = v;
+                            else {
+                              const op = d.nodes.find(
+                                (n) => n.id === operation.id,
+                              );
+                              if (op?.kind === "afterimage")
+                                op.params.path[i].x = v;
+                            }
+                          })
+                        }
+                      />
+                      <NumberField
+                        label={`Point ${i + 1} Y`}
+                        value={p.y}
+                        disabled={locked}
+                        onCommit={(v) =>
+                          execute("Shape trajectory", (d) => {
+                            const n = d.nodes.find(
+                              (n) => n.id === pathNode?.id,
+                            );
+                            if (n?.kind === "trajectory") n.points[i].y = v;
+                            else {
+                              const op = d.nodes.find(
+                                (n) => n.id === operation.id,
+                              );
+                              if (op?.kind === "afterimage")
+                                op.params.path[i].y = v;
+                            }
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+                </details>
+              </section>
+            )}
+            {maskNode?.kind === "selection" && (
+              <section className="inspector-section">
+                <h3>Selection</h3>
+                <label className="select-control">
+                  Selection shape
+                  <select
+                    value={maskNode.coverage.kind}
+                    disabled={locked}
+                    onChange={(e) => {
+                      const kind = e.target.value;
+                      if (kind === "painted")
+                        editMask({
+                          kind: "painted",
+                          painted: {
+                            enabled: true,
+                            base: "empty",
+                            strokes: [],
+                          },
+                        });
+                      if (kind === "ellipse")
+                        editMask({
+                          kind: "ellipse",
+                          center: { x: 0.5, y: 0.5 },
+                          radius: { x: 0.46, y: 0.48 },
+                        });
+                      if (kind === "closed")
+                        editMask({
+                          kind: "closed",
+                          points: [
+                            { x: 0.2, y: 0.2 },
+                            { x: 0.8, y: 0.2 },
+                            { x: 0.5, y: 0.8 },
+                          ],
+                        });
+                      if (kind === "image") maskInput.current?.click();
+                      setMode("selection");
+                    }}
                   >
-                    <summary>Trajectory points</summary>
-                    <p className="control-help">
-                      Draw over the output or edit source-space coordinates. One
-                      smooth cubic is retained.
-                    </p>
-                    {actualPath.map((p, i) => (
-                      <div className="number-grid path-row" key={i}>
-                        <NumberField
-                          label={`Point ${i + 1} X`}
-                          value={p.x}
-                          disabled={locked}
-                          onCommit={(v) =>
-                            execute("Shape trajectory", (d) => {
-                              const n = d.nodes.find(
-                                (n) => n.id === pathNode?.id,
-                              );
-                              if (n?.kind === "trajectory") n.points[i].x = v;
-                              else {
-                                const op = d.nodes.find(
-                                  (n) => n.id === operation.id,
-                                );
-                                if (op?.kind === "afterimage")
-                                  op.params.path[i].x = v;
-                              }
-                            })
-                          }
-                        />
-                        <NumberField
-                          label={`Point ${i + 1} Y`}
-                          value={p.y}
-                          disabled={locked}
-                          onCommit={(v) =>
-                            execute("Shape trajectory", (d) => {
-                              const n = d.nodes.find(
-                                (n) => n.id === pathNode?.id,
-                              );
-                              if (n?.kind === "trajectory") n.points[i].y = v;
-                              else {
-                                const op = d.nodes.find(
-                                  (n) => n.id === operation.id,
-                                );
-                                if (op?.kind === "afterimage")
-                                  op.params.path[i].y = v;
-                              }
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </details>
-                </section>
-              )}
-            {maskNode?.kind === "selection" &&
-              selection?.kind !== "capture" && (
-                <section className="inspector-section">
-                  <h3>Selection</h3>
-                  <label className="select-control">
-                    Selection shape
-                    <select
-                      value={maskNode.coverage.kind}
+                    <option value="ellipse">Elliptical region</option>
+                    <option value="painted">Painted subject</option>
+                    <option value="closed">Closed boundary</option>
+                    <option value="image">Imported grayscale image</option>
+                  </select>
+                </label>
+                <NumberField
+                  label="Selection feather"
+                  min={0.001}
+                  max={0.5}
+                  step={0.01}
+                  value={maskNode.feather}
+                  disabled={locked}
+                  onCommit={(v) =>
+                    patchNode(maskNode.id, "Feather selection", (n) => {
+                      if (n.kind === "selection") n.feather = v;
+                    })
+                  }
+                />
+                {maskNode.coverage.kind === "painted" && (
+                  <>
+                    <div className="action-pair">
+                      <button
+                        disabled={locked}
+                        aria-pressed={brushMode === "paint"}
+                        onClick={() => {
+                          setBrushMode("paint");
+                          setMode("selection");
+                        }}
+                      >
+                        Paint
+                      </button>
+                      <button
+                        disabled={locked}
+                        aria-pressed={brushMode === "erase"}
+                        onClick={() => {
+                          setBrushMode("erase");
+                          setMode("selection");
+                        }}
+                      >
+                        Erase
+                      </button>
+                    </div>
+                    <NumberField
+                      label="Brush diameter %"
+                      min={1}
+                      max={40}
+                      value={brushSize}
                       disabled={locked}
-                      onChange={(e) => {
-                        const kind = e.target.value;
-                        if (kind === "painted")
+                      onCommit={setBrushSize}
+                    />
+                    <div className="action-pair">
+                      <button
+                        disabled={locked}
+                        onClick={() =>
+                          editMask({
+                            kind: "painted",
+                            painted: {
+                              enabled: true,
+                              base: "full",
+                              strokes: [],
+                            },
+                          })
+                        }
+                      >
+                        Reveal all
+                      </button>
+                      <button
+                        disabled={locked}
+                        onClick={() =>
                           editMask({
                             kind: "painted",
                             painted: {
@@ -2942,217 +2902,120 @@ function FieldApp() {
                               base: "empty",
                               strokes: [],
                             },
-                          });
-                        if (kind === "ellipse")
-                          editMask({
-                            kind: "ellipse",
-                            center: { x: 0.5, y: 0.5 },
-                            radius: { x: 0.46, y: 0.48 },
-                          });
-                        if (kind === "closed")
-                          editMask({
-                            kind: "closed",
-                            points: [
-                              { x: 0.2, y: 0.2 },
-                              { x: 0.8, y: 0.2 },
-                              { x: 0.5, y: 0.8 },
-                            ],
-                          });
-                        if (kind === "image") maskInput.current?.click();
-                        setMode("selection");
-                      }}
-                    >
-                      <option value="ellipse">Elliptical region</option>
-                      <option value="painted">Painted subject</option>
-                      <option value="closed">Closed boundary</option>
-                      <option value="image">Imported grayscale image</option>
-                    </select>
-                  </label>
-                  <NumberField
-                    label="Selection feather"
-                    min={0.001}
-                    max={0.5}
-                    step={0.01}
-                    value={maskNode.feather}
-                    disabled={locked}
-                    onCommit={(v) =>
-                      patchNode(maskNode.id, "Feather selection", (n) => {
-                        if (n.kind === "selection") n.feather = v;
-                      })
-                    }
-                  />
-                  {maskNode.coverage.kind === "painted" && (
-                    <>
-                      <div className="action-pair">
-                        <button
-                          disabled={locked}
-                          aria-pressed={brushMode === "paint"}
-                          onClick={() => {
-                            setBrushMode("paint");
-                            setMode("selection");
-                          }}
-                        >
-                          Paint
-                        </button>
-                        <button
-                          disabled={locked}
-                          aria-pressed={brushMode === "erase"}
-                          onClick={() => {
-                            setBrushMode("erase");
-                            setMode("selection");
-                          }}
-                        >
-                          Erase
-                        </button>
-                      </div>
-                      <NumberField
-                        label="Brush diameter %"
-                        min={1}
-                        max={40}
-                        value={brushSize}
-                        disabled={locked}
-                        onCommit={setBrushSize}
-                      />
-                      <div className="action-pair">
-                        <button
-                          disabled={locked}
-                          onClick={() =>
-                            editMask({
-                              kind: "painted",
-                              painted: {
-                                enabled: true,
-                                base: "full",
-                                strokes: [],
-                              },
-                            })
-                          }
-                        >
-                          Reveal all
-                        </button>
-                        <button
-                          disabled={locked}
-                          onClick={() =>
-                            editMask({
-                              kind: "painted",
-                              painted: {
-                                enabled: true,
-                                base: "empty",
-                                strokes: [],
-                              },
-                            })
-                          }
-                        >
-                          Clear selection
-                        </button>
-                      </div>
-                      <p className="control-help">
-                        Paint on the input artwork. Manual selection, up to 64
-                        strokes and 512 points; masks use a 1024px raster.
-                      </p>
-                    </>
-                  )}
-                  {maskNode.coverage.kind === "closed" && (
-                    <p className="control-help">
-                      Draw a closed boundary on the input. The last point
-                      connects to the first. Move vertices to refine it.
-                    </p>
-                  )}
-                  {maskNode.coverage.kind === "ellipse" && (
-                    <div className="number-grid">
-                      <NumberField
-                        label="Center X %"
-                        value={maskNode.coverage.center.x * 100}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          patchNode(maskNode.id, "Move selection", (n) => {
-                            if (
-                              n.kind === "selection" &&
-                              n.coverage.kind === "ellipse"
-                            )
-                              n.coverage.center.x = v / 100;
                           })
                         }
-                      />
-                      <NumberField
-                        label="Center Y %"
-                        value={maskNode.coverage.center.y * 100}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          patchNode(maskNode.id, "Move selection", (n) => {
-                            if (
-                              n.kind === "selection" &&
-                              n.coverage.kind === "ellipse"
-                            )
-                              n.coverage.center.y = v / 100;
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Radius X %"
-                        value={maskNode.coverage.radius.x * 100}
-                        min={0.5}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          patchNode(maskNode.id, "Resize selection", (n) => {
-                            if (
-                              n.kind === "selection" &&
-                              n.coverage.kind === "ellipse"
-                            )
-                              n.coverage.radius.x = v / 100;
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Radius Y %"
-                        value={maskNode.coverage.radius.y * 100}
-                        min={0.5}
-                        disabled={locked}
-                        onCommit={(v) =>
-                          patchNode(maskNode.id, "Resize selection", (n) => {
-                            if (
-                              n.kind === "selection" &&
-                              n.coverage.kind === "ellipse"
-                            )
-                              n.coverage.radius.y = v / 100;
-                          })
-                        }
-                      />
+                      >
+                        Clear selection
+                      </button>
                     </div>
-                  )}
-                  <button
-                    disabled={locked}
-                    onClick={() => maskInput.current?.click()}
-                  >
-                    Import selection image
-                  </button>
-                  {!inputPlacement && imageEdge && (
-                    <button
+                    <p className="control-help">
+                      Paint on the input artwork. Manual selection, up to 64
+                      strokes and 512 points; masks use a 1024px raster.
+                    </p>
+                  </>
+                )}
+                {maskNode.coverage.kind === "closed" && (
+                  <p className="control-help">
+                    Draw a closed boundary on the input. The last point connects
+                    to the first. Move vertices to refine it.
+                  </p>
+                )}
+                {maskNode.coverage.kind === "ellipse" && (
+                  <div className="number-grid">
+                    <NumberField
+                      label="Center X %"
+                      value={maskNode.coverage.center.x * 100}
                       disabled={locked}
-                      onClick={() =>
-                        execute("Place input reference", (d) => {
-                          d.placements.push({
-                            id: uuid(),
-                            nodeId: imageEdge.from,
-                            name: "Input reference",
-                            transform: {
-                              x: 60,
-                              y: 80,
-                              scaleX: 0.6,
-                              scaleY: 0.6,
-                              rotation: 0,
-                            },
-                            visible: true,
-                            included: false,
-                          });
+                      onCommit={(v) =>
+                        patchNode(maskNode.id, "Move selection", (n) => {
+                          if (
+                            n.kind === "selection" &&
+                            n.coverage.kind === "ellipse"
+                          )
+                            n.coverage.center.x = v / 100;
                         })
                       }
-                    >
-                      Show input for selection editing
-                    </button>
-                  )}
-                </section>
-              )}
-            {connectionTargets && selection?.kind !== "capture" && (
+                    />
+                    <NumberField
+                      label="Center Y %"
+                      value={maskNode.coverage.center.y * 100}
+                      disabled={locked}
+                      onCommit={(v) =>
+                        patchNode(maskNode.id, "Move selection", (n) => {
+                          if (
+                            n.kind === "selection" &&
+                            n.coverage.kind === "ellipse"
+                          )
+                            n.coverage.center.y = v / 100;
+                        })
+                      }
+                    />
+                    <NumberField
+                      label="Radius X %"
+                      value={maskNode.coverage.radius.x * 100}
+                      min={0.5}
+                      disabled={locked}
+                      onCommit={(v) =>
+                        patchNode(maskNode.id, "Resize selection", (n) => {
+                          if (
+                            n.kind === "selection" &&
+                            n.coverage.kind === "ellipse"
+                          )
+                            n.coverage.radius.x = v / 100;
+                        })
+                      }
+                    />
+                    <NumberField
+                      label="Radius Y %"
+                      value={maskNode.coverage.radius.y * 100}
+                      min={0.5}
+                      disabled={locked}
+                      onCommit={(v) =>
+                        patchNode(maskNode.id, "Resize selection", (n) => {
+                          if (
+                            n.kind === "selection" &&
+                            n.coverage.kind === "ellipse"
+                          )
+                            n.coverage.radius.y = v / 100;
+                        })
+                      }
+                    />
+                  </div>
+                )}
+                <button
+                  disabled={locked}
+                  onClick={() => maskInput.current?.click()}
+                >
+                  Import selection image
+                </button>
+                {!inputPlacement && imageEdge && (
+                  <button
+                    disabled={locked}
+                    onClick={() =>
+                      execute("Place input reference", (d) => {
+                        d.placements.push({
+                          id: uuid(),
+                          nodeId: imageEdge.from,
+                          name: "Input reference",
+                          transform: {
+                            x: 60,
+                            y: 80,
+                            scaleX: 0.6,
+                            scaleY: 0.6,
+                            rotation: 0,
+                          },
+                          visible: true,
+                          included: false,
+                        });
+                      })
+                    }
+                  >
+                    Show input for selection editing
+                  </button>
+                )}
+              </section>
+            )}
+            {connectionTargets && (
               <section className="inspector-section">
                 <details
                   open={currentNode?.kind === "afterimage" && !currentPlacement}
@@ -3226,82 +3089,25 @@ function FieldApp() {
                 </details>
               </section>
             )}
-            {selection?.kind === "capture" && (
-              <section className="inspector-section">
-                <p className="control-help">
-                  Only visible placements marked Include in capture are
-                  rendered. Reference material and process controls stay outside
-                  the PNG.
-                </p>
-                <div className="number-grid">
-                  {(["x", "y", "width", "height"] as const).map((key) => (
-                    <NumberField
-                      key={key}
-                      label={`Capture ${key}`}
-                      value={doc.capture[key]}
-                      disabled={locked}
-                      min={key === "width" || key === "height" ? 1 : undefined}
-                      onCommit={(n) =>
-                        execute("Edit capture", (d) => {
-                          d.capture[key] = n;
-                        })
-                      }
-                    />
-                  ))}
-                </div>
+            <section className="inspector-section">
+              <h3>Export</h3>
+              <p className="control-help">
+                Export fits all visible artwork included in the output. The
+                canvas stays open; reference material and process controls stay
+                outside the PNG.
+              </p>
+              <div className="action-pair">
                 <button
-                  disabled={locked || updating}
-                  onClick={() => {
-                    try {
-                      fitCapture();
-                    } catch (e) {
-                      setError(friendly(e));
-                    }
-                  }}
+                  disabled={locked}
+                  onClick={() => void exportArtwork(2048)}
                 >
-                  Fit included artwork
+                  Export 2K
                 </button>
-                <div className="capture-members">
-                  {doc.placements.map((p) => (
-                    <label key={p.id} className="check-control">
-                      <input
-                        type="checkbox"
-                        disabled={locked}
-                        checked={p.included}
-                        onChange={(e) =>
-                          patchPlacement(
-                            p.id,
-                            "Change capture membership",
-                            (item) => {
-                              item.included = e.target.checked;
-                            },
-                          )
-                        }
-                      />
-                      <span>{p.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="control-help">
-                  Export preserves this aspect ratio. A square capture exports
-                  at 4096 × 4096.
-                </p>
-                <div className="action-pair">
-                  <button
-                    disabled={locked}
-                    onClick={() => void exportCapture(2048)}
-                  >
-                    Export 2K
-                  </button>
-                  <button
-                    disabled={locked}
-                    onClick={() => void exportCapture()}
-                  >
-                    Export 4K
-                  </button>
-                </div>
-              </section>
-            )}
+                <button disabled={locked} onClick={() => void exportArtwork()}>
+                  Export 4K
+                </button>
+              </div>
+            </section>
             {!selection && (
               <section className="inspector-section">
                 <p>
@@ -3313,12 +3119,6 @@ function FieldApp() {
                   Linked copies follow the same process. Vary creates an
                   independent operation with copied guides.
                 </p>
-                <button
-                  disabled={locked || !doc.placements.length}
-                  onClick={() => setSelection({ kind: "capture" })}
-                >
-                  Compose capture
-                </button>
               </section>
             )}
             <section className="inspector-section">

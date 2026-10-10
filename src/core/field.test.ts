@@ -13,6 +13,7 @@ import type { Asset, StudyState } from "./project.ts";
 import { encodeWorkspace } from "./workspace.ts";
 import {
   addAfterimage,
+  artworkBounds,
   connect,
   decodeField,
   emptyField,
@@ -24,6 +25,7 @@ import {
   linkedCopy,
   removeNode,
   replaceImage,
+  resizeArtwork,
   screenToField,
   topologicalOrder,
   toWorld,
@@ -557,4 +559,64 @@ test("encoded JPEG and PNG dimensions are bounded before browser decoding", () =
   new DataView(png.buffer).setUint32(16, 20000);
   assert.throws(() => imageBounds(png), /4096/);
   assert.throws(() => imageBounds(photo.subarray(0, 10)), /JPEG|4096/);
+});
+test("proportional resize preserves existing aspect and reflection under rotated pointer coordinates and bounds", () => {
+  const original = { x: 280, y: -110, scaleX: -2, scaleY: 0.5, rotation: 67 };
+  const pointer = toWorld({ x: 620, y: 430 }, original);
+  const resized = resizeArtwork(original, pointer, 391, 623, true);
+  near(resized.scaleX / resized.scaleY, original.scaleX / original.scaleY);
+  assert.ok(resized.scaleX < 0 && resized.scaleY > 0);
+  assert.equal(resized.rotation, original.rotation);
+  for (const local of [
+    { x: 1e8, y: 1e8 },
+    { x: -1e8, y: -1e8 },
+  ]) {
+    const result = resizeArtwork(
+      original,
+      toWorld(local, original),
+      391,
+      623,
+      true,
+    );
+    near(result.scaleX / result.scaleY, original.scaleX / original.scaleY);
+    assert.ok(Math.abs(result.scaleX) <= 8 && Math.abs(result.scaleY) <= 8);
+    assert.ok(
+      Math.abs(result.scaleX) >= 0.05 && Math.abs(result.scaleY) >= 0.05,
+    );
+  }
+  const free = resizeArtwork(original, pointer, 391, 623, false);
+  assert.notEqual(free.scaleX / free.scaleY, original.scaleX / original.scaleY);
+});
+test("automatic export bounds contain transformed included artwork and exclude hidden/reference placements", () => {
+  const b = base(),
+    d = b.document;
+  d.placements[0].transform = {
+    x: 20,
+    y: 30,
+    scaleX: 2,
+    scaleY: 3,
+    rotation: 90,
+  };
+  const reference = structuredClone(d.placements[0]);
+  reference.id = "reference";
+  reference.transform.x = -10000;
+  reference.included = false;
+  const hidden = structuredClone(d.placements[0]);
+  hidden.id = "hidden";
+  hidden.transform.x = 10000;
+  hidden.visible = false;
+  d.placements.push(reference, hidden);
+  const outputs = new Map([
+    [d.placements[0].nodeId, { width: 100, height: 50 }],
+  ]);
+  const bounds = artworkBounds(d.placements, outputs);
+  near(bounds.x, -130);
+  near(bounds.y, 30);
+  near(bounds.width, 150);
+  near(bounds.height, 200);
+  d.capture = { x: -10000, y: -10000, width: 1, height: 1 };
+  assert.deepEqual(artworkBounds(d.placements, outputs), bounds);
+  assert.throws(() => artworkBounds(d.placements, new Map()), /Render/);
+  d.placements[0].included = false;
+  assert.throws(() => artworkBounds(d.placements, outputs), /Include/);
 });
