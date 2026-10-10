@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-09",
+  "scope": "Bounded independent AFTERIMAGE studies; one active evaluator; temporary workbench",
+  "automated": {
+    "tests": 37,
+    "processing": 10,
+    "singleStudyFiles": 10,
+    "commands": 9,
+    "workspace": 8,
+    "result": "pass",
+    "typescriptAndBuild": "pass",
+    "buildWarning": "Existing main chunk exceeds 500 kB"
+  },
+  "limits": {
+    "studies": 4,
+    "packageMiB": 64,
+    "uniqueImagesMiB": 60,
+    "eachImageMiB": 24,
+    "imageEdgePx": 4096,
+    "imageAreaPx": 16000000
+  },
+  "browserVerified": [
+    "Independent duplicated settings and distinct comparison previews",
+    "Switching retains parameters, capture, mode, proof and separate session histories",
+    "Source replacement affects only selected study; other original photograph stays intact",
+    "Import adds a study; a fourth duplicate disables further Import/Duplicate",
+    "Actual two-study download and reopen restores retained settings with fresh histories",
+    "Actual four-study/two-source reopen regenerates all comparison previews",
+    "Four-study save/reopen/resave preserves every stored entry at fixed viewport",
+    "Corrupt ZIP CRC rejected while current four-study project remains intact"
+  ],
+  "browserOutstanding": {
+    "reason": "Browser permission denied during final verification; no further browser access attempted",
+    "checks": [
+      "New project cancellation and confirmation",
+      "Narrow layout of latest comparison strip and actions",
+      "Final result of staged decoded-dimension mismatch in an inactive source",
+      "Latest user preview refresh"
+    ]
+  },
+  "roundtrip": {
+    "allEntriesIdentical": true,
+    "scope": "Four studies at fixed viewport; authored data, presentation and original bytes",
+    "twoStudyEarlierObservation": "Resave changed only active camera values during navigation; authored state and original bytes unchanged"
+  },
+  "files": [
+    {
+      "file": "experiments/results/two-studies.form",
+      "bytes": 54794,
+      "sha256": "6c0b7baa0cd94a4ca1882fb87530a2df3a9b17c406dfd9e451562be9db11b9bc",
+      "entries": {
+        "manifest.json": "b8d4c1638dcb191c4cbb70da853732b8860e97e052361ca3f5682a70f6e02a8b",
+        "document.json": "926993db8653c460afed78cb99e3a537000d5d351c69db28fe23935e7c0570ce",
+        "assets/4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a.jpg": "4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a"
+      },
+      "formatVersion": 2,
+      "studyCount": 2,
+      "uniqueImages": 1,
+      "selectedStudyIndex": 2,
+      "exposureCounts": [
+        10,
+        64
+      ]
+    },
+    {
+      "file": "experiments/results/four-studies.form",
+      "bytes": 59804,
+      "sha256": "d2b0b88895e3317145b0ae7b5953c6527fca32ab6efa546e1820e577d633339a",
+      "entries": {
+        "manifest.json": "00fd9585d5d636e2112086d0d907a89eb47c8299004f54bab31d71e817d20027",
+        "document.json": "5bf0bf0cb2857b102e046fdd8eee342fddf927c88d11c0cb365374b6b8e3feaf",
+        "assets/4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a.jpg": "4caa5033370dba97f7cac6b4964c3f22e613498ba86ac143a53d182e8b5e1a8a",
+        "assets/c98a72c3154f3752b19f060e711a28d8114b964f119c0326e13119b569a8a914.png": "c98a72c3154f3752b19f060e711a28d8114b964f119c0326e13119b569a8a914"
+      },
+      "formatVersion": 2,
+      "studyCount": 4,
+      "uniqueImages": 2,
+      "selectedStudyIndex": 4,
+      "exposureCounts": [
+        10,
+        64,
+        9,
+        9
+      ]
+    }
+  ],
+  "fixtures": [
+    "Public-domain Marble head / The Met fixture",
+    "Generated 24 by 32 PNG test pattern; not photographic quality evidence"
+  ],
+  "notEstablished": [
+    "Shared graph editing or linked copies",
+    "Simultaneous FIELD branches or more instruments",
+    "Native macOS/Windows rendering or persistence",
+    "Autosave/recovery",
+    "Final design approval or multi-photograph artistic quality"
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-10",
+  "branch": "codex/field-first-build",
+  "scope": "CPU geometry, graph, commands, portable codec, semantic cache identity and tiled PNG encoding",
+  "tests": {
+    "total": 80,
+    "passed": 80,
+    "failed": 0,
+    "log": "field-first-build-tests.txt"
+  },
+  "typescript": "passed",
+  "productionBuild": "passed",
+  "diffWhitespace": "passed",
+  "fixture": {
+    "file": "field-first-build.form",
+    "formatVersion": 3,
+    "nodes": 8,
+    "placements": 4,
+    "assets": 1,
+    "bytes": 55219,
+    "sha256": "d41e0a42269cb6141a0ccf6dca1c6ae9684274012ae7333b093c72342252e57d",
+    "roundtrip": "exact",
+    "imageSource": "Existing public-domain marble-head fixture, The Met"
+  },
+  "pngTest": {
+    "renderer": "CPU coordinate fixture with bottom-up readback",
+    "dimensions": [
+      1103,
+      259
+    ],
+    "tiles": 6,
+    "verification": "Every RGBA pixel, row filter, PNG chunk CRC and dimensions checked",
+    "gpuOrCanvasCompositionVerified": false
+  },
+  "unverified": [
+    "FIELD real pointer and keyboard interactions",
+    "New connected-graph GPU results and export quality",
+    "Canvas2D selection feathering and composition tile comparison",
+    "Actual downloaded FIELD file reopening",
+    "IndexedDB recovery after reload",
+    "Renderer context-loss restoration",
+    "Target macOS/Windows/native platform coverage",
+    "Responsive layout, interface approval and artist review"
+  ],
+  "browserBlock": "Saved browser permission denies 127.0.0.1:5174. No callable setting found; native computer use denies access to Codex itself. No circumvention attempted.",
+  "limitations": [
+    "Vite shared dependency chunk exceeds the 500 kB advisory threshold",
+    "Operation outputs are bounded 4K rasters; composition tiles do not remove intermediate raster/memory limits"
+  ],
+  "interactionRevision": {
+    "delete": "Selection removal via Delete/Backspace is implemented and undoable; live key event verification pending",
+    "resize": "Shift preserves current proportions; rotated/reflected geometry and bounds tests passed",
+    "canvas": "No capture box or capture controls; export fits visible included artwork automatically; geometry tests passed",
+    "rotation": "Centre-preserving handle/numeric rotation and continuous multiple turns implemented; reflected/nonuniform scale and angular-wrap geometry tests passed; live pointer checks pending"
+  }
+}
