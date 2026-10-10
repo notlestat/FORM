@@ -70,6 +70,7 @@ import type { RecoverySnapshot } from "../platform/recovery";
 import {
   alignArtwork,
   artworkSelection,
+  captureArtworkSelection,
   selectionBounds,
   translateArtwork,
   removeArtwork,
@@ -412,14 +413,10 @@ function FieldApp() {
   };
   const selectArtwork = (id: string, additive = false, preserve = false) => {
     if (locked) return selectedArtworkIds;
-    const next = artworkSelection(
-      selectedArtworkIds,
-      id,
-      additive && mode === "select",
-      preserve,
-    );
+    const next = artworkSelection(selectedArtworkIds, id, additive, preserve);
     select(next.length ? { kind: "placement", id: next.at(-1)! } : null);
     setArtworkIds(next);
+    if (additive) setMode("select");
     return next;
   };
   const selectAllArtwork = () => {
@@ -1938,6 +1935,15 @@ function FieldApp() {
                       transform: `translate(${t.x}px, ${t.y}px) rotate(${t.rotation}deg) scale(${t.scaleX}, ${t.scaleY})`,
                     }}
                     aria-label={placement.name}
+                    onPointerDownCapture={(e) => {
+                      if (locked || space.current) return;
+                      const handle =
+                        e.target instanceof Element &&
+                        !!e.target.closest(".transform-handle");
+                      captureArtworkSelection(e, handle, () =>
+                        selectArtwork(placement.id, true),
+                      );
+                    }}
                   >
                     <button
                       className="art-label"

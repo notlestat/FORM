@@ -2,7 +2,7 @@
 
 10 October 2026. [Draft PR #4](https://github.com/notlestat/FORM/pull/4) is open/unmerged. Branch: `codex/artwork-alignment`, based on composition commit f43b5239df98199a903c8f64ffbc2bc0e4eb877d.
 
-Select mode now supports several artworks at once. Shift-click an image, its label or its Objects entry to add/remove it. Select all artwork selects visible placements, including references. Plain clicking an Objects entry selects it alone; dragging an already selected image retains the multi-selection. Each selected image is outlined.
+Shift-click now selects several artworks at once and switches to Select mode automatically, including when clicking through trajectory/selection overlays. Shift-click an image, its label or its Objects entry to add/remove it. Select all artwork selects visible placements, including references. Plain clicking an Objects entry selects it alone; dragging an already selected image retains the multi-selection. Each selected image is outlined.
 
 Drag any selected image to move the selection together. Arrow keys while an artwork label is focused nudge the selection by one field unit; Shift nudges by ten. A group drag commits one undo entry. Escape, pointer cancellation, lost capture, window blur or resize cancel the drag and restore the original document/redo branch. Escape outside a gesture clears the selection. Delete/Backspace or Remove selected removes all selected placements atomically, preserving shared process objects; Undo restores them. Text fields keep their normal editing shortcuts.
 
@@ -14,7 +14,7 @@ Selection itself is presentation state and is not saved or placed in authoring h
 
 ## Verification
 
-- 91/91 CPU tests pass: seven new cases cover selection toggles, all six alignments with rotated/reflected/nonuniform images, unselected placement preservation, missing/invalid geometry rejection, group translation, history commit/cancellation/redo, atomic deletion/undo and portable roundtrip/cache identity.
+- 93/93 CPU tests pass: seven arrangement cases and two pointer-capture regression cases cover selection toggles, all six alignments with rotated/reflected/nonuniform images, unselected placement preservation, missing/invalid geometry rejection, group translation, history commit/cancellation/redo, atomic deletion/undo and portable roundtrip/cache identity.
 - TypeScript, production build and git diff --check pass. The existing shared dependency chunk-size advisory remains.
 - [CPU report](../experiments/results/artwork-alignment-cpu.json) · [test log](../experiments/results/artwork-alignment-tests.txt).
 - Live pointer/keyboard/visual verification remains pending because the saved localhost permission blocks agent browser access. CPU evidence does not establish event behaviour or GPU/native/recovery correctness.
@@ -24,3 +24,8 @@ Corey reports the additional-image workflow works and requests the next build. T
 ## Local check
 
 Place two images or a linked copy. In Select mode, Shift-click both Objects entries and check the inspector says two artworks. Drag either selected image; Undo/Redo, cancel another drag with Escape, then use Left edges or Horizontal centres. Try a rotated image. Save/reopen and export to inspect the arrangement. Delete the selection and Undo. Finally select one artwork and verify Shift resizing still retains proportions.
+
+
+## Shift-click correction
+
+Corey reported Shift-click fails on images on the canvas. Inspection found the selection path gated on Select mode and editing overlays routed input directly into drawing handlers. The artwork section now captures Shift-left-pointer input before the body/overlay handlers and switches to Select mode. Size/rotation handles bypass capture so proportional Shift resizing remains intact. The Artwork list also accepts additive selection without the earlier mode gate. Primary-pointer/button guards and Space panning remain in place. Regression tests verify event consumption, membership toggling and untouched transform/middle/secondary/ordinary pointer paths. New live interaction still awaits user retesting.

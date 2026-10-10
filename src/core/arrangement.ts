@@ -6,6 +6,29 @@ export type Alignment =
   "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
 export type ArtworkSizes = Map<string, { width: number; height: number }>;
 
+type SelectionPointer = Pick<
+  PointerEvent,
+  "shiftKey" | "button" | "isPrimary" | "preventDefault" | "stopPropagation"
+>;
+/** Capture before drawing overlays; transform handles retain Shift resizing. */
+export function captureArtworkSelection(
+  event: SelectionPointer,
+  transformHandle: boolean,
+  select: () => void,
+): boolean {
+  if (
+    !event.shiftKey ||
+    event.button !== 0 ||
+    !event.isPrimary ||
+    transformHandle
+  )
+    return false;
+  event.preventDefault();
+  event.stopPropagation();
+  select();
+  return true;
+}
+
 /** Selection is presentation state; Shift toggles membership without duplicate IDs. */
 export function artworkSelection(
   current: string[],

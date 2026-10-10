@@ -46,6 +46,7 @@ import {
   alignArtwork,
   artworkRect,
   artworkSelection,
+  captureArtworkSelection,
   removeArtwork,
   selectionBounds,
   translateArtwork,
@@ -1013,4 +1014,64 @@ test("aligned group transforms roundtrip without new file state and keep operati
     await operationKey(moved, op(d).id, hash, region, "preview"),
     await operationKey(d, op(d).id, hash, region, "preview"),
   );
+});
+
+test("Shift selection captures image and overlay pointer input before drawing or drag handlers", () => {
+  let ids = ["original"],
+    prevented = 0,
+    stopped = 0,
+    selected = 0;
+  const event = {
+    shiftKey: true,
+    button: 0,
+    isPrimary: true,
+    preventDefault() {
+      prevented++;
+    },
+    stopPropagation() {
+      stopped++;
+    },
+  };
+  assert.equal(
+    captureArtworkSelection(event, false, () => {
+      selected++;
+      ids = artworkSelection(ids, "next", true);
+    }),
+    true,
+  );
+  assert.deepEqual(ids, ["original", "next"]);
+  assert.equal(prevented, 1);
+  assert.equal(stopped, 1);
+  assert.equal(selected, 1);
+  captureArtworkSelection(event, false, () => {
+    ids = artworkSelection(ids, "next", true);
+  });
+  assert.deepEqual(ids, ["original"]);
+});
+test("Shift capture leaves size/rotation handles, panning and ordinary pointers to their existing handlers", () => {
+  const base = {
+    shiftKey: true,
+    button: 0,
+    isPrimary: true,
+    preventDefault() {
+      throw Error("Unexpected capture");
+    },
+    stopPropagation() {
+      throw Error("Unexpected capture");
+    },
+  };
+  const unexpected = () => {
+    throw Error("Unexpected selection");
+  };
+  assert.equal(captureArtworkSelection(base, true, unexpected), false);
+  for (const change of [
+    { button: 1 },
+    { button: 2 },
+    { shiftKey: false },
+    { isPrimary: false },
+  ])
+    assert.equal(
+      captureArtworkSelection({ ...base, ...change }, false, unexpected),
+      false,
+    );
 });

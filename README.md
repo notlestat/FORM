@@ -32,7 +32,7 @@ npm run build
 git diff --check
 ```
 
-91 CPU tests pass as of 10 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
+93 CPU tests pass as of 10 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
 
 The interface follows the written brief: self-hosted Archivo, restrained monochrome surfaces, thin rules, direct handles and contextual panels. Visual references have not been supplied; Corey accepted the preceding interface provisionally; the new composition controls await review. The initial public-domain marble-head fixture is credited in [experiment instructions](experiments/README.md).
 
