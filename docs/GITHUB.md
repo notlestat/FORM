@@ -1,5 +1,7 @@
 # GitHub review workflow
 
+The next implementation is on `codex/field-first-build`: the first connected FIELD workspace, composition and recovery. [First-build evidence](FIRST_BUILD.md) records 76 passing CPU tests and the live checks still pending. Because PR #1 is unmerged and `main` contains only initialization, this branch inherits the full prototype; its new PR targets `main` with that full scope. No merge is authorised.
+
 10 October 2026.
 
 Repository: [notlestat/FORM](https://github.com/notlestat/FORM), public at Corey's explicit request.

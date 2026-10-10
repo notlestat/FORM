@@ -1,5 +1,7 @@
 # Review status
 
+**10 October, current FIELD:** the first connected workspace and composition/recovery implementation replaces the temporary single-study UI at the default URL. [FIRST_BUILD.md](FIRST_BUILD.md) separates implementation from evidence. Its CPU tests, TypeScript and production build pass; browser control remains blocked by a saved permission. New FIELD interaction, GPU export, IndexedDB recovery and visual approval remain pending. Historical verification below applies to the older bounded prototype, retained at `?legacy=1`.
+
 9 October 2026.
 
 Corey approved concept A, Spatial workbench, and the four bounded phase 1 experiments. The font and interface style must follow the original FORM brief. AFTERIMAGE-first was already confirmed. A functioning study now imports photographs, renders guided exposures, supports direct trajectory/elliptical-region edits and exports tiled PNGs. See [phase 1 findings](PHASE1_RESULTS.md).

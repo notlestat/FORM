@@ -1,54 +1,49 @@
 # FORM
 
-Experimental creative environment. Spatial workbench A and four bounded phase 1 experiments approved on 9 October 2026.
+Experimental creative environment: place sources, connect processes, shape their outputs and compose a capture.
 
-**AFTERIMAGE phase 1 is running.** Import photographs, guide exposures along trajectories, adjust elliptical regions, compare up to four independent studies, save/reopen a portable `.form` project and export the selected study as a transparent 4K PNG. See [phase 1 findings](docs/PHASE1_RESULTS.md) for measured results and remaining gates.
+The first FIELD build is implemented on `codex/field-first-build`. AFTERIMAGE is the first instrument. It includes shared source/path/selection connections, independent variations, linked artwork copies, transformable composition, portable projects and local recovery. **Live interaction, GPU output and restart recovery still need verification.** See [first-build scope and evidence](docs/FIRST_BUILD.md).
 
-The repository was empty at inspection: an existing `.git` directory on `main`, no commits, application code, dependencies, assets or project instructions. No supplied Pinterest boards or artwork references were available. The review illustrations describe interactions; they are not examples of an implemented instrument's output.
-
-## Start here
-
-Open [.lavish/form-plan/index.html](.lavish/form-plan/index.html) for three interface concepts, a FIELD walkthrough and the proposed approval scope. It works as a local HTML file. Lavish adds annotations and queued feedback.
-
-1. [Product vision](docs/PRODUCT_VISION.md)
-2. [Interaction design](docs/INTERACTION_DESIGN.md)
-3. [Architecture](docs/ARCHITECTURE.md)
-4. [Instruments](docs/INSTRUMENTS.md)
-5. [Roadmap, acceptance tests and risks](docs/ROADMAP.md)
-6. [Design system](docs/DESIGN_SYSTEM.md)
-7. [Technology research and sources](docs/RESEARCH.md)
-8. [TouchDesigner bridge](docs/TOUCHDESIGNER.md)
-9. [Proposed architecture decisions](docs/DECISIONS.md)
-10. [Review and validation status](docs/REVIEW_STATUS.md)
-
-Recommendation: spatial workbench interaction, AFTERIMAGE first, a shared TypeScript document and evaluator, React controls and PixiJS WebGL2 rendering. Test Tauri on macOS and Windows before committing to a desktop release architecture. Start with bounded experiments after approval, then one complete FIELD workflow.
-
-## Run and verify
+## Run
 
 ```sh
 npm ci
 npm run dev -- --port 5174 --strictPort
 ```
 
-Open http://127.0.0.1:5174. Use Region to select pixels on the source photograph, then Trajectory to guide their movement on the result. The result frame stays fixed while editing. Fit artwork explicitly includes the current full result; export uses the frame shown, so use Fit artwork if an edit extends beyond it. Drag object labels to arrange the field. Space + drag pans; pinch zooms; F fits. Precise controls provide numeric path and region alternatives. Undo and Redo cover instrument edits, placements, source connection, Fit artwork and the study name. Cmd/Ctrl+Z undoes; Shift+Cmd/Ctrl+Z or Ctrl+Y redoes. Object placement provides numeric coordinates. Focus an object label and use arrow keys to move it; Shift moves by 10. Escape cancels an active edit. See [editing commands](docs/COMMANDS.md).
+Open [the local FIELD preview](http://127.0.0.1:5174/). The older bounded study remains available at [Legacy study](http://127.0.0.1:5174/?legacy=1); it saves version 2 files. FIELD saves version 3 and reads versions 1–3. Legacy cannot open version 3.
+
+1. Place a JPEG/PNG photograph, select it, then Create AFTERIMAGE.
+2. Select the output. Draw a trajectory over it or edit its handles/numeric points.
+3. Select Selection mode and edit the input photograph's coverage: ellipse, painted subject, closed boundary or imported luminance mask.
+4. Linked copy places the same output again. Vary copies the editable upstream branch so it can develop independently.
+5. Move, scale or rotate artwork. Include the placements you want in the capture and draw or fit its rectangle.
+6. Save a portable `.form` file, reopen it, then export a transparent PNG at a 2K or 4K long edge.
+
+Process stations arrange the dependency diagram; artwork placement changes the composition and export. Space + drag pans; wheel pans; pinch/Cmd/Ctrl + wheel zooms; F fits the selection. Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z or Ctrl+Y redoes; Escape cancels a gesture. Numeric controls provide precise alternatives. Capture is independent of the viewport and proof background.
+
+Local recovery keeps a browser-stored project snapshot after edits settle. A previous snapshot is offered for review on startup. Save a downloaded `.form` file for a portable copy; browser storage can be cleared and is not a backup.
+
+## Verify
 
 ```sh
 npm test
 npm run build
+git diff --check
 ```
 
-Open technical checks → Run checks in the app for local rendering comparisons. [Experiment instructions](experiments/README.md) describe repeatable checks. [Actual 4K output](experiments/results/afterimage-4096.png) is retained.
+76 CPU tests pass as of 10 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
 
-The interface follows the written FORM brief: self-hosted Archivo, neutral surfaces, thin rules, restrained handles and an artwork-led spatial layout. The public-domain photograph is a fixture. No Pinterest boards or artwork references have been supplied.
+The interface follows the written brief: self-hosted Archivo, restrained monochrome surfaces, thin rules, direct handles and contextual panels. Visual references have not been supplied; the interface still needs Corey's visual approval. The initial public-domain marble-head fixture is credited in [experiment instructions](experiments/README.md).
 
-Duplicate study makes an independent variation. Import photograph adds a study; Replace source changes the selected study. Select a result in the comparison strip to edit it. Each study retains its settings, capture, presentation and session history. New project starts again with the selected photograph. See [multiple studies](docs/MULTI_STUDY.md).
+## Project references
 
-Save project downloads all studies and embeds each distinct original image once. Open restores the project; older single-study files remain supported. Keep the downloaded file; there is no autosave yet. See [project files](docs/PROJECT_FILES.md).
+- [First FIELD build](docs/FIRST_BUILD.md), [architecture](docs/ARCHITECTURE.md), [design system](docs/DESIGN_SYSTEM.md)
+- [Product vision](docs/PRODUCT_VISION.md), [interaction design](docs/INTERACTION_DESIGN.md), [roadmap](docs/ROADMAP.md)
+- [Instruments](docs/INSTRUMENTS.md), [TouchDesigner bridge](docs/TOUCHDESIGNER.md), [research](docs/RESEARCH.md)
+- [Historical phase 1 evidence](docs/PHASE1_RESULTS.md), [review status](docs/REVIEW_STATUS.md), [GitHub workflow](docs/GITHUB.md)
+- [Original three-concept planning review](.lavish/form-plan/index.html)
 
-Each study contains one source, operation and output, with its own validated authoring history. The bounded workspace evaluates one selected study. General graph editing, shared operations, FRAME, LIVE and native hosting remain planned. Review the creative and platform gates before promoting this study into the FIELD application.
+FRAME, LIVE, camera/screen capture, further instruments, TouchDesigner integration and native macOS/Windows hosting remain future milestones. No native platform support or complete acceptance pass is claimed.
 
-Draw trajectory lets you sketch movement over the selected result, release to apply a smooth curve, then refine its handles. Each stroke is one undo step; Escape cancels. Detailed loops and sharp corners are simplified. See [drawing scope and checks](docs/DRAW_TRAJECTORY.md).
-
-Painted subject selection now lets you paint and erase the source pixels that repeat. Choose Painted subject under Selection shape, then paint on the photograph. Each stroke is undoable; Save/Open retains the editable mask. See [selection scope, bounds and remaining rendering checks](docs/PAINTED_MASK.md).
-
-The [public GitHub repository](https://github.com/notlestat/FORM) was established on 10 October. The complete prototype is proposed in [PR #1](https://github.com/notlestat/FORM/pull/1) on `codex/painted-subject-mask`; the initial `main` commit contains repository setup only. See [GitHub review workflow](docs/GITHUB.md).
+Source is public at [notlestat/FORM](https://github.com/notlestat/FORM). Pull requests target `main`; merging requires Corey's explicit approval.

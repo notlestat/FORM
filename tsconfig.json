@@ -14,7 +14,8 @@
   "include": [
     "experiments/afterimage/**/*.ts",
     "experiments/afterimage/**/*.tsx",
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "exclude": ["experiments/afterimage/*.test.ts", "src/**/*.test.ts"]
 }

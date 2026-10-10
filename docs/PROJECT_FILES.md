@@ -1,5 +1,7 @@
 # Project files
 
+**FIELD format 3, 10 October:** the default app now embeds a typed graph, independent source/path/selection objects, linked artwork placements, capture, camera and explicit colour policy. It reads formats 1/2 by migration and writes format 3. Browser IndexedDB recovery is implemented but not live-verified. See [FIRST_BUILD.md](FIRST_BUILD.md) for current limits and evidence. The older study format documented below remains available in the legacy app.
+
 Implemented 9 October 2026 for one to four AFTERIMAGE studies in a project.
 
 ## Save and reopen

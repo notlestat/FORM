@@ -1,5 +1,7 @@
 # Architecture
 
+**Implemented FIELD update, 10 October:** the format-3 graph, authoring commands, semantic cache keys, dependency evaluator, linked placements, composed capture, legacy migration and browser recovery are described in [FIRST_BUILD.md](FIRST_BUILD.md). The prototype uses React controls, one serial WebGL2 AFTERIMAGE backend per evaluator and Canvas2D sRGB composition. Native hosting and bridge architecture below remain proposals. CPU tests pass; live rendering/recovery verification remains pending.
+
 Status: target architecture v0.1, 9 October 2026. The AFTERIMAGE experiment implements a bounded renderer, tiled PNG export, a single-study schema in `src/core/project.ts`, a four-study workspace/file codec in `src/core/workspace.ts` and per-study transactional authoring commands in `src/core/commands.ts`. See [project files](PROJECT_FILES.md) and [measured findings](PHASE1_RESULTS.md). General graph commands, DAG evaluation, caching, multiple instruments and native hosting remain proposed. Research evidence and unresolved constraints are in [RESEARCH.md](RESEARCH.md); decision status is in [DECISIONS.md](DECISIONS.md).
 
 ## Recommendation

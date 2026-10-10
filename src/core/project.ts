@@ -311,6 +311,8 @@ export function readProjectEntries(
   bytes: Uint8Array,
   maxBytes = MAX_PACKAGE_BYTES,
   maxEntries = 3,
+  maxJSONBytes = MAX_JSON_BYTES,
+  minEntries = 3,
 ): Map<string, Uint8Array> {
   if (bytes.length < 22 || bytes.length > maxBytes)
     fail("Invalid or oversized .form package.");
@@ -320,7 +322,7 @@ export function readProjectEntries(
     v.getUint32(end, true) !== 0x06054b50 ||
     v.getUint16(end + 4, true) !== 0 ||
     v.getUint16(end + 6, true) !== 0 ||
-    v.getUint16(end + 8, true) < 3 ||
+    v.getUint16(end + 8, true) < minEntries ||
     v.getUint16(end + 8, true) > maxEntries ||
     v.getUint16(end + 10, true) !== v.getUint16(end + 8, true) ||
     v.getUint16(end + 20, true) !== 0
@@ -358,7 +360,7 @@ export function readProjectEntries(
     if (
       (name !== "manifest.json" && name !== "document.json" && !isImage) ||
       result.has(name) ||
-      size > (isImage ? MAX_IMAGE_BYTES : MAX_JSON_BYTES)
+      size > (isImage ? MAX_IMAGE_BYTES : maxJSONBytes)
     )
       fail("Invalid, duplicate or oversized project entry.");
     if (

@@ -1,5 +1,7 @@
 # Roadmap
 
+**10 October update:** Corey authorised the complete first FIELD build. The shared-graph vertical slice, composition, format-3 persistence and browser recovery are now implemented on `codex/field-first-build`. [Current scope and acceptance evidence](FIRST_BUILD.md) supersedes the phase-1-only boundary and older implementation status below. Integrated live/GPU/recovery verification remains pending; this is not a native desktop acceptance pass.
+
 Status: phase 1 approved and underway, 9 October 2026. Local implementation and results are recorded in [PHASE1_RESULTS.md](PHASE1_RESULTS.md). No dates are promised before the technical and creative experiments establish scope.
 
 ## Approval boundary

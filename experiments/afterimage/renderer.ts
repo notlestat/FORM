@@ -46,6 +46,7 @@ export class AfterimageRenderer {
   texture!: WebGLTexture;
   maskTexture!: WebGLTexture;
   maskKey = "";
+  maskOverride: TexImageSource | null = null;
   vao!: WebGLVertexArrayObject;
   canvas: HTMLCanvasElement;
   width = 1;
@@ -118,11 +119,27 @@ export class AfterimageRenderer {
   }
   upload(image: TexImageSource, width: number, height: number) {
     const g = this.gl;
-    if (width > this.maxSize || height > this.maxSize)
+    const pixels = image as {
+      width?: number;
+      height?: number;
+      naturalWidth?: number;
+      naturalHeight?: number;
+      videoWidth?: number;
+      videoHeight?: number;
+    };
+    const pixelWidth =
+      pixels.naturalWidth || pixels.videoWidth || pixels.width || width;
+    const pixelHeight =
+      pixels.naturalHeight || pixels.videoHeight || pixels.height || height;
+    if (
+      Math.max(width, pixelWidth) > this.maxSize ||
+      Math.max(height, pixelHeight) > this.maxSize
+    )
       throw Error("Image exceeds this GPU texture limit.");
     this.width = width;
     this.height = height;
     this.maskKey = "";
+    this.maskOverride = null;
     g.bindTexture(g.TEXTURE_2D, this.texture);
     g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, 0);
     g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
@@ -137,13 +154,19 @@ export class AfterimageRenderer {
       this.uniforms.set(name, this.gl.getUniformLocation(this.program, name));
     return this.uniforms.get(name)!;
   }
-  draw(p: Params, region: Rect, width: number, height: number) {
+  draw(
+    p: Params,
+    region: Rect,
+    width: number,
+    height: number,
+    override?: TexImageSource,
+  ) {
     if (this.lost)
       throw Error(
         "GPU context lost. Reload the experiment to restore rendering.",
       );
     const g = this.gl;
-    const painted = p.mask && p.paintedMask?.enabled;
+    const painted = Boolean(override || (p.mask && p.paintedMask?.enabled));
     if (painted) {
       const key = JSON.stringify([
         this.width,
@@ -151,19 +174,17 @@ export class AfterimageRenderer {
         p.feather,
         p.paintedMask,
       ]);
-      if (key !== this.maskKey) {
-        const mask = rasterizeMask(
-          p.paintedMask!,
-          this.width,
-          this.height,
-          p.feather,
-        );
+      if (key !== this.maskKey || this.maskOverride !== (override ?? null)) {
+        const mask =
+          override ??
+          rasterizeMask(p.paintedMask!, this.width, this.height, p.feather);
         g.activeTexture(g.TEXTURE1);
         g.bindTexture(g.TEXTURE_2D, this.maskTexture);
         g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, 0);
         g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
         g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, mask);
         this.maskKey = key;
+        this.maskOverride = override ?? null;
       }
     }
     if (this.canvas.width !== width || this.canvas.height !== height) {
@@ -201,7 +222,7 @@ export class AfterimageRenderer {
     g.uniform4fv(this.u("uSamples[0]"), values);
     g.uniform1i(this.u("uCount"), es.length);
     g.uniform1i(this.u("uMode"), p.mode === "ghosts" ? 0 : 1);
-    g.uniform1i(this.u("uMask"), p.mask ? 1 : 0);
+    g.uniform1i(this.u("uMask"), p.mask || override ? 1 : 0);
     g.uniform4f(
       this.u("uEllipse"),
       p.maskCenter.x,

@@ -1,5 +1,7 @@
 # Editing commands
 
+**FIELD update, 10 October:** one field-level command history now covers graph connections, branch variations, linked copies, source replacement, mask/path edits, artwork transforms and capture. Numeric fields commit on blur/Enter; gestures commit once and cancel on Escape, lost capture, blur or resize. Reopening starts fresh history. [FIRST_BUILD.md](FIRST_BUILD.md) records verified CPU behaviour and remaining browser checks; the per-study implementation below is historical.
+
 Implemented 9 October 2026. Each AFTERIMAGE study now owns an independent authoring history.
 
 ## Use it

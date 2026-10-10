@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "test": "node --experimental-strip-types --test experiments/afterimage/core.test.ts experiments/afterimage/trajectory.test.ts experiments/afterimage/mask.test.ts src/core/project.test.ts src/core/commands.test.ts src/core/workspace.test.ts"
+    "test": "node --experimental-strip-types --test experiments/afterimage/core.test.ts experiments/afterimage/trajectory.test.ts experiments/afterimage/mask.test.ts experiments/afterimage/export.test.ts src/core/project.test.ts src/core/commands.test.ts src/core/workspace.test.ts src/core/field.test.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.3.0",

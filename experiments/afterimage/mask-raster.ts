@@ -52,6 +52,13 @@ export function rasterizeMask(
       c.stroke();
     }
   }
+  return featherCoverage(raw, feather);
+}
+
+export function featherCoverage(
+  raw: HTMLCanvasElement,
+  feather: number,
+): HTMLCanvasElement {
   const blur = feather * Math.max(raw.width, raw.height) * 0.05;
   // Padding prevents blur from fading a full selection at the image edges.
   const pad = Math.ceil(blur * 3),
