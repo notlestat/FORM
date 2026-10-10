@@ -1,6 +1,6 @@
 # Artwork selection and alignment
 
-10 October 2026. Branch: `codex/artwork-alignment`, based on composition commit f43b5239df98199a903c8f64ffbc2bc0e4eb877d.
+10 October 2026. [Draft PR #4](https://github.com/notlestat/FORM/pull/4) is open/unmerged. Branch: `codex/artwork-alignment`, based on composition commit f43b5239df98199a903c8f64ffbc2bc0e4eb877d.
 
 Select mode now supports several artworks at once. Shift-click an image, its label or its Objects entry to add/remove it. Select all artwork selects visible placements, including references. Plain clicking an Objects entry selects it alone; dragging an already selected image retains the multi-selection. Each selected image is outlined.
 
