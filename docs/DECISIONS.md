@@ -67,3 +67,6 @@ D30, user-reported composition feedback: Corey reports placing an additional ima
 
 
 D31, corrective interaction: Corey reports canvas-image Shift-click does not multi-select. Capture Shift-left-primary-pointer at the artwork section before drawing overlays, and switch additive selection into Select mode. Bypass transform handles to retain Shift proportional resizing; keep Space/middle-button navigation. Accept additive selection in the Artwork list irrespective of the previous tool mode. Two pointer-routing regression tests bring the suite to 93; live user retest remains pending.
+
+
+D32, implemented distribution: after Corey's provisional success report and request to continue, add horizontal/vertical equal-gap and equal-centre distribution for at least three selected artworks. Order by transformed rectangle centres, with ID tie-breaking; keep both end placements exactly fixed. Equal gaps account for transformed sizes and reject insufficient room atomically; equal centres may overlap. Translate interior placements only, preserving all graph, scale/rotation/opacity/stacking data. Retain existing commands/codec/recovery/export. See ARTWORK_SPACING.md.

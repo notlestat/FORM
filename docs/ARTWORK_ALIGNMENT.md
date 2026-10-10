@@ -29,3 +29,8 @@ Place two images or a linked copy. In Select mode, Shift-click both Objects entr
 ## Shift-click correction
 
 Corey reported Shift-click fails on images on the canvas. Inspection found the selection path gated on Select mode and editing overlays routed input directly into drawing handlers. The artwork section now captures Shift-left-pointer input before the body/overlay handlers and switches to Select mode. Size/rotation handles bypass capture so proportional Shift resizing remains intact. The Artwork list also accepts additive selection without the earlier mode gate. Primary-pointer/button guards and Space panning remain in place. Regression tests verify event consumption, membership toggling and untouched transform/middle/secondary/ordinary pointer paths. New live interaction still awaits user retesting.
+
+
+## User retest feedback
+
+Following the canvas Shift-click correction, Corey reports “works good build next”. This records provisional user-reported success of that correction; exact modes/devices checked are unknown. It does not verify agent browser/GPU/native/recovery checks or authorise a merge. The next implemented step is [artwork distribution](ARTWORK_SPACING.md).

@@ -5,6 +5,8 @@ import type { Point, Rect } from "../../experiments/afterimage/core.ts";
 export type Alignment =
   "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
 export type ArtworkSizes = Map<string, { width: number; height: number }>;
+export type SpacingAxis = "x" | "y";
+export type SpacingMode = "gaps" | "centres";
 
 type SelectionPointer = Pick<
   PointerEvent,
@@ -134,6 +136,53 @@ export function removeArtwork(d: FieldDocument, ids: string[]): FieldDocument {
   const next = structuredClone(d),
     removed = new Set(ids);
   next.placements = next.placements.filter((p) => !removed.has(p.id));
+  validateField(next);
+  return next;
+}
+
+/** Keep the first/last centre-ordered images fixed and arrange the interior. */
+export function distributeArtwork(
+  d: FieldDocument,
+  ids: string[],
+  sizes: ArtworkSizes,
+  axis: SpacingAxis,
+  mode: SpacingMode,
+): FieldDocument {
+  const next = structuredClone(d);
+  const items = selected(next, ids)
+    .map((p) => {
+      const r = artworkRect(p, sizes),
+        length = axis === "x" ? r.width : r.height;
+      return { p, start: r[axis], length, centre: r[axis] + length / 2 };
+    })
+    .sort(
+      (a, b) =>
+        a.centre - b.centre || (a.p.id < b.p.id ? -1 : a.p.id > b.p.id ? 1 : 0),
+    );
+  if (items.length < 3)
+    throw Error("Select at least three artworks to distribute.");
+  const first = items[0],
+    last = items.at(-1)!;
+  const gap =
+    (last.start +
+      last.length -
+      first.start -
+      items.reduce((sum, item) => sum + item.length, 0)) /
+    (items.length - 1);
+  if (mode === "gaps" && gap < -1e-8)
+    throw Error(
+      "Not enough room for equal gaps. Move the two outer artworks farther apart, or use equal centres.",
+    );
+  const step = (last.centre - first.centre) / (items.length - 1);
+  let cursor = first.start + first.length + Math.max(0, gap);
+  for (let i = 1; i < items.length - 1; i++) {
+    const item = items[i];
+    const target =
+      mode === "centres" ? first.centre + step * i - item.length / 2 : cursor;
+    const delta = target - item.start;
+    if (Math.abs(delta) > 1e-8) item.p.transform[axis] += delta;
+    cursor += item.length + Math.max(0, gap);
+  }
   validateField(next);
   return next;
 }

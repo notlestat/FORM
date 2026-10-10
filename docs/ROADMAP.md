@@ -118,3 +118,8 @@ After Corey reported the preceding build works for now and asked to continue, th
 ## Arrangement continuation, 10 October
 
 After Corey reports the additional-image workflow works, the next bounded composition step adds multi-selection, joint movement/deletion and edge/centre alignment within FIELD. [Scope and evidence](ARTWORK_ALIGNMENT.md). This retains the open canvas; it does not introduce FRAME navigation, typography or live inputs.
+
+
+## Distribution continuation, 10 October
+
+Corey reports the Shift-click correction works and authorises the next build. Equal spacing is now implemented within FIELD: horizontal/vertical gaps or centres, using existing placement transforms and Undo/Redo. [Scope and evidence](ARTWORK_SPACING.md). This remains a bounded composition step.

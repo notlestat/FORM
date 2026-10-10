@@ -71,11 +71,12 @@ import {
   alignArtwork,
   artworkSelection,
   captureArtworkSelection,
+  distributeArtwork,
   selectionBounds,
   translateArtwork,
   removeArtwork,
 } from "../core/arrangement";
-import type { Alignment } from "../core/arrangement";
+import type { Alignment, SpacingAxis, SpacingMode } from "../core/arrangement";
 
 type Selection = { kind: "node" | "placement"; id: string } | null;
 type Mode = "select" | "trajectory" | "selection";
@@ -429,6 +430,10 @@ function FieldApp() {
   const alignSelected = (alignment: Alignment) =>
     execute("Align selected artwork", (d) =>
       alignArtwork(d, selectedArtworkIds, result.outputs, alignment),
+    );
+  const distributeSelected = (axis: SpacingAxis, spacing: SpacingMode) =>
+    execute("Distribute selected artwork", (d) =>
+      distributeArtwork(d, selectedArtworkIds, result.outputs, axis, spacing),
     );
   const clientPoint = (e: { clientX: number; clientY: number }) => {
     const r = field.current!.getBoundingClientRect();
@@ -2414,6 +2419,34 @@ function FieldApp() {
                     </button>
                   ))}
                 </div>
+                <h3>Distribute selection</h3>
+                <div className="action-pair">
+                  {(
+                    [
+                      ["x", "gaps", "Horizontal gaps"],
+                      ["y", "gaps", "Vertical gaps"],
+                      ["x", "centres", "Horizontal centres"],
+                      ["y", "centres", "Vertical centres"],
+                    ] as [SpacingAxis, SpacingMode, string][]
+                  ).map(([axis, spacing, label]) => (
+                    <button
+                      key={`${axis}-${spacing}`}
+                      disabled={
+                        locked ||
+                        !alignmentReady ||
+                        selectedArtworkIds.length < 3
+                      }
+                      onClick={() => distributeSelected(axis, spacing)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="control-help">
+                  Select at least three artworks. The two outer centres stay
+                  fixed. Equal gaps account for image sizes and need enough
+                  room; equal centres can overlap.
+                </p>
                 {!alignmentReady && (
                   <p className="control-help">
                     All selected outputs must render before alignment is

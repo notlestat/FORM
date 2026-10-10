@@ -47,6 +47,7 @@ import {
   artworkRect,
   artworkSelection,
   captureArtworkSelection,
+  distributeArtwork,
   removeArtwork,
   selectionBounds,
   translateArtwork,
@@ -1074,4 +1075,175 @@ test("Shift capture leaves size/rotation handles, panning and ordinary pointers 
       captureArtworkSelection({ ...base, ...change }, false, unexpected),
       false,
     );
+});
+
+function distributionFixture() {
+  let { d } = arrangementFixture();
+  d = linkedCopy(d, d.placements[0].id, "spacing-fourth");
+  for (let i = 0; i < d.placements.length; i++) {
+    d.placements[i].transform.x = [-2500, 130, 550, 6500][i];
+    d.placements[i].transform.y = [-3500, -110, 680, 8500][i];
+  }
+  return {
+    d,
+    ids: d.placements.map((p) => p.id),
+    sizes: new Map([[d.placements[0].nodeId, { width: 391, height: 623 }]]),
+  };
+}
+function orderedRects(
+  d: FieldDocument,
+  sizes: Map<string, { width: number; height: number }>,
+  axis: "x" | "y",
+) {
+  return d.placements
+    .map((p) => ({ p, r: artworkRect(p, sizes) }))
+    .sort(
+      (a, b) =>
+        a.r[axis] +
+        (axis === "x" ? a.r.width : a.r.height) / 2 -
+        (b.r[axis] + (axis === "x" ? b.r.width : b.r.height) / 2),
+    );
+}
+test("equal gaps preserve endpoint placements and size-aware spacing on both axes with rotated/reflected artwork", () => {
+  const { d, ids, sizes } = distributionFixture(),
+    original = structuredClone(d);
+  for (const axis of ["x", "y"] as const) {
+    const before = orderedRects(d, sizes, axis),
+      result = distributeArtwork(d, ids, sizes, axis, "gaps"),
+      after = orderedRects(result, sizes, axis);
+    assert.deepEqual(after[0].p, before[0].p);
+    assert.deepEqual(after.at(-1)!.p, before.at(-1)!.p);
+    const gaps = after
+      .slice(1)
+      .map(
+        (item, i) =>
+          item.r[axis] -
+          after[i].r[axis] -
+          (axis === "x" ? after[i].r.width : after[i].r.height),
+      );
+    assert.ok(gaps[0] > 0);
+    gaps.forEach((gap) => near(gap, gaps[0]));
+    for (const p of result.placements) {
+      const old = d.placements.find((q) => q.id === p.id)!;
+      assert.equal(
+        p.transform[axis === "x" ? "y" : "x"],
+        old.transform[axis === "x" ? "y" : "x"],
+      );
+      assert.deepEqual(
+        { ...p.transform, [axis]: old.transform[axis] },
+        old.transform,
+      );
+      assert.equal(p.opacity, old.opacity);
+    }
+    assert.deepEqual(result.nodes, d.nodes);
+    assert.deepEqual(result.edges, d.edges);
+    assert.deepEqual(
+      result.placements.map((p) => p.id),
+      ids,
+    );
+    assert.deepEqual(
+      distributeArtwork(result, ids, sizes, axis, "gaps"),
+      result,
+    );
+  }
+  assert.deepEqual(d, original);
+});
+test("equal centres preserve endpoints and are independent of selection order on both axes", () => {
+  const { d, ids, sizes } = distributionFixture();
+  for (const axis of ["x", "y"] as const) {
+    const before = orderedRects(d, sizes, axis),
+      result = distributeArtwork(d, [...ids].reverse(), sizes, axis, "centres"),
+      after = orderedRects(result, sizes, axis);
+    const centres = after.map(
+      (item) =>
+        item.r[axis] + (axis === "x" ? item.r.width : item.r.height) / 2,
+    );
+    for (let i = 2; i < centres.length; i++)
+      near(centres[i] - centres[i - 1], centres[1] - centres[0]);
+    assert.deepEqual(after[0].p, before[0].p);
+    assert.deepEqual(after.at(-1)!.p, before.at(-1)!.p);
+    assert.deepEqual(distributeArtwork(d, ids, sizes, axis, "centres"), result);
+    assert.deepEqual(
+      distributeArtwork(result, ids, sizes, axis, "centres"),
+      result,
+    );
+  }
+});
+test("equal gaps reject insufficient space atomically while equal centres permit overlapping artwork", () => {
+  const b = base();
+  let d = linkedCopy(b.document, b.placementId, "overlap-b");
+  d = linkedCopy(d, b.placementId, "overlap-c");
+  d.placements.forEach((p, i) => {
+    p.transform.x = [0, 5, 20][i];
+    p.transform.y = 0;
+  });
+  const ids = d.placements.map((p) => p.id),
+    sizes = new Map([[d.placements[0].nodeId, { width: 100, height: 100 }]]),
+    original = structuredClone(d);
+  assert.throws(
+    () => distributeArtwork(d, ids, sizes, "x", "gaps"),
+    /Not enough room/,
+  );
+  assert.deepEqual(d, original);
+  const next = distributeArtwork(d, ids, sizes, "x", "centres");
+  near(next.placements[1].transform.x, 10);
+  const commands = new FieldCommands(next);
+  commands.undo();
+  commands.execute("No-op spacing", (state) =>
+    distributeArtwork(state, ids, sizes, "x", "centres"),
+  );
+  assert.equal(commands.status.undo, null);
+});
+test("distribution rejects too few, missing or unrendered artworks and leaves unselected placement intact", () => {
+  const { d, ids, sizes } = distributionFixture();
+  assert.throws(
+    () => distributeArtwork(d, ids.slice(0, 2), sizes, "x", "gaps"),
+    /at least three/,
+  );
+  assert.throws(
+    () => distributeArtwork(d, [ids[0], ids[1], "missing"], sizes, "x", "gaps"),
+    /existing artwork/,
+  );
+  assert.throws(
+    () => distributeArtwork(d, ids, new Map(), "x", "centres"),
+    /Render all/,
+  );
+  const result = distributeArtwork(
+    d,
+    [ids[0], ids[1], ids[3]],
+    sizes,
+    "x",
+    "gaps",
+  );
+  assert.deepEqual(result.placements[2], d.placements[2]);
+});
+test("distribution undo and redo restore all translations in one command", () => {
+  const { d, ids, sizes } = distributionFixture(),
+    commands = new FieldCommands(d);
+  commands.execute("Distribute", (state) =>
+    distributeArtwork(state, ids, sizes, "y", "gaps"),
+  );
+  const spaced = commands.state;
+  commands.undo();
+  assert.deepEqual(commands.state, d);
+  assert.equal(commands.status.undo, null);
+  commands.redo();
+  assert.deepEqual(commands.state, spaced);
+});
+test("distributed artwork persists in format 3 and retains export extent without changing the instrument", async () => {
+  const { d, ids, sizes } = distributionFixture(),
+    spaced = distributeArtwork(d, ids, sizes, "x", "centres");
+  assert.deepEqual(
+    (await decodeField(await encodeField(spaced, images))).document,
+    spaced,
+  );
+  const region = { x: 0, y: 0, width: 1000, height: 1000 };
+  assert.equal(
+    await operationKey(d, op(d).id, hash, region, "preview"),
+    await operationKey(spaced, op(d).id, hash, region, "preview"),
+  );
+  const includedBefore = artworkBounds(d.placements, sizes),
+    includedAfter = artworkBounds(spaced.placements, sizes);
+  near(includedBefore.x, includedAfter.x);
+  near(includedBefore.width, includedAfter.width);
 });
