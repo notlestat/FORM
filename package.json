@@ -1,0 +1,24 @@
+{
+  "name": "form-phase1",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --experimental-strip-types --test experiments/afterimage/core.test.ts experiments/afterimage/trajectory.test.ts experiments/afterimage/mask.test.ts experiments/afterimage/export.test.ts src/core/project.test.ts src/core/commands.test.ts src/core/workspace.test.ts src/core/field.test.ts src/core/frame.test.ts src/core/instrument.test.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "5.3.0",
+    "fflate": "0.8.3",
+    "pixi.js": "8.22.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.9.3",
+    "vite": "8.3.4"
+  }
+}

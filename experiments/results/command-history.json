@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-09",
+  "scope": "Codex in-app browser, single AFTERIMAGE study",
+  "automatedTests": 29,
+  "commandTests": 9,
+  "placementDrag": {
+    "before": {
+      "x": 66,
+      "y": 218
+    },
+    "afterCss": {
+      "left": "122.026px",
+      "top": "254.817px"
+    },
+    "undoExact": true,
+    "redoExact": true,
+    "oneUndoStep": true
+  },
+  "keyboardPlacement": {
+    "resultXBefore": 600,
+    "resultXAfterShiftArrow": 610,
+    "resultXAfterCmdZ": 600
+  },
+  "connection": {
+    "disconnectDisablesExport": true,
+    "undoRestoresExport": true,
+    "redoDisconnects": true
+  },
+  "capture": {
+    "before": "-47.360000000000014 -101.36000000000001 790.72 790.72",
+    "fitted": "-71.00000000000011 -349.5000000000001 1288.0000000000002 1288.0000000000002",
+    "undoExact": true,
+    "pathUndoSeparateAndExact": true
+  },
+  "cancellation": {
+    "numericPlacementEscapeRestores600": true,
+    "nameEscapeAbandonsDraft": true,
+    "renameUndoRestoresOriginal": true
+  },
+  "sliderDrag": {
+    "beforeDrag": 33,
+    "afterDrag": 56,
+    "oneUndo": 33,
+    "secondUndo": 9,
+    "undoThenDisabled": true
+  },
+  "directPathDrag": {
+    "changesCurve": true,
+    "oneUndoRestoresExactSvgCurve": true,
+    "captureStaysFixed": true
+  },
+  "savedState": {
+    "actualBrowserDownload": "command-history-study.form",
+    "formatVersion": 1,
+    "name": "Command history study",
+    "resultPosition": {
+      "x": 710,
+      "y": 68
+    },
+    "count": 9,
+    "embeddedPhotoBytes": 50669,
+    "reopenRestoresState": true,
+    "openClearsUndoAndRedo": true,
+    "previousVersion1FileOpens": true
+  },
+  "limits": [
+    "One source and operation",
+    "Opening/replacing source resets history",
+    "No persisted undo stack",
+    "Native Mac and Windows not tested"
+  ],
+  "narrowLayout": {
+    "viewportWidth": 390,
+    "documentScrollWidth": 390,
+    "undoRedoResetWithinViewport": true,
+    "placementInputsWithinViewport": true
+  },
+  "resetUndo": {
+    "count": 2,
+    "seed": 8254,
+    "regionCentreX": 145
+  },
+  "browserConsoleErrors": []
+}
