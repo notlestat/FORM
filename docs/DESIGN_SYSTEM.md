@@ -1,6 +1,6 @@
 # Design system
 
-Status: direction derived from the written FORM brief, applied to the approved Spatial workbench phase 1 study. No supplied artwork references were present. The original review remains a schematic; experiments/afterimage/style.css defines the functioning study.
+Status, 12 October 2026: the written FORM direction continues in FIELD/FRAME. Archivo Variable, neutral surfaces, restrained green selection, thin rules and contextual controls remain in use. src/field/style.css defines the current interface. FRAME artboards have explicit exportable backgrounds; dark proof remains a viewing aid. No new visual references were supplied. The expanded controls require live review.
 
 ## Direction
 
@@ -41,7 +41,7 @@ Thin rules separate controls. Square or subtly rounded edges suit the tools. Avo
 - Path handles have a small visible centre and at least a 24px invisible hit area. Keyboard and numeric alternatives remain available.
 - Connectors label port semantics on focus. Dashed lines indicate a proposed connection; solid lines indicate a committed one.
 - Inspectors group artistic controls first, then source links and technical diagnostics.
-- Capture boundaries are visibly different from object selection bounds.
+- FIELD has no fixed capture box. FRAME artboard labels and outlines differ from artwork selection; column/margin guides never export.
 - Modal dialogs are reserved for file operations, consequential deletion and unresolved relinking. Normal manipulation stays on canvas.
 
 ## Accessibility and motion

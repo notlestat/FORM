@@ -1,3 +1,6 @@
+import { materialKey } from "../core/authoring";
+import { textLines } from "../core/frame";
+import type { TextMaterial, ShapeMaterial } from "../core/authoring";
 import { composeArtwork } from "../core/composition";
 import { AfterimageRenderer } from "../../experiments/afterimage/renderer";
 import {
@@ -193,6 +196,96 @@ export function coverageCanvas(
   }
   return featherCoverage(raw, feather);
 }
+async function materialCanvas(
+  n: TextMaterial | ShapeMaterial,
+  quality: Quality,
+): Promise<Raster> {
+  if (n.kind === "text") {
+    const font = `${n.weight} ${n.fontSize}px "Archivo Variable"`;
+    await document.fonts.load(font, n.content || "FORM");
+    if (!document.fonts.check(font))
+      throw Error("Archivo is not ready. Retry after the font loads.");
+  }
+  const scale =
+    quality === "preview" ? Math.min(1, 768 / Math.max(n.width, n.height)) : 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(n.width * scale));
+  canvas.height = Math.max(1, Math.round(n.height * scale));
+  const c = canvas.getContext("2d")!;
+  c.scale(canvas.width / n.width, canvas.height / n.height);
+  if (n.kind === "text") {
+    c.font = `${n.weight} ${n.fontSize}px "Archivo Variable"`;
+    c.fontKerning = "none";
+    c.textBaseline = "top";
+    c.fillStyle = n.color;
+    const pieces = (s: string) =>
+      Array.from(
+        new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s),
+        (x) => x.segment,
+      );
+    const lines = textLines(
+      n.content,
+      n.width,
+      n.tracking,
+      (s) => c.measureText(s).width,
+    );
+    lines.forEach((line, i) => {
+      const chars = pieces(line),
+        width =
+          chars.reduce((sum, ch) => sum + c.measureText(ch).width, 0) +
+          Math.max(0, chars.length - 1) * n.tracking;
+      let x =
+        n.align === "left"
+          ? 0
+          : n.align === "center"
+            ? (n.width - width) / 2
+            : n.width - width;
+      const y = i * n.fontSize * n.lineHeight;
+      if (y >= n.height) return;
+      for (const char of chars) {
+        c.fillText(char, x, y);
+        x += c.measureText(char).width + n.tracking;
+      }
+    });
+  } else {
+    const inset = n.stroke ? n.strokeWidth / 2 : 0;
+    c.beginPath();
+    if (n.shape === "ellipse")
+      c.ellipse(
+        n.width / 2,
+        n.height / 2,
+        Math.max(0, n.width / 2 - inset),
+        Math.max(0, n.height / 2 - inset),
+        0,
+        0,
+        Math.PI * 2,
+      );
+    else
+      c.rect(
+        inset,
+        inset,
+        Math.max(0, n.width - inset * 2),
+        Math.max(0, n.height - inset * 2),
+      );
+    if (n.fill) {
+      c.fillStyle = n.fill;
+      c.fill();
+    }
+    if (n.stroke && n.strokeWidth > 0) {
+      c.strokeStyle = n.stroke;
+      c.lineWidth = n.strokeWidth;
+      c.stroke();
+    }
+  }
+  return {
+    image: canvas,
+    width: n.width,
+    height: n.height,
+    region: { x: 0, y: 0, width: n.width, height: n.height },
+    key: materialKey(n, quality),
+    proxy: scale < 1,
+  };
+}
 export class FieldEvaluator {
   private cache = new Map<string, Raster>();
   private renderer: AfterimageRenderer | null = null;
@@ -204,6 +297,21 @@ export class FieldEvaluator {
     this.cache.clear();
     this.renderer?.destroy();
     this.renderer = null;
+  }
+  private remember(key: string, raster: Raster, quality: Quality) {
+    this.cache.set(key, raster);
+    const budget = (quality === "preview" ? 64 : 192) * 1024 * 1024;
+    let bytes = [...this.cache.values()].reduce(
+      (n, v) => n + v.image.width * v.image.height * 4,
+      0,
+    );
+    for (const [k, v] of this.cache) {
+      if (bytes <= budget) break;
+      if (k !== key) {
+        this.cache.delete(k);
+        bytes -= v.image.width * v.image.height * 4;
+      }
+    }
   }
   private async backend() {
     if (this.renderer?.lost) {
@@ -266,6 +374,43 @@ export class FieldEvaluator {
             proxy: false,
           };
           outputs.set(id, raster);
+          return raster;
+        }
+        if (n.kind === "text" || n.kind === "shape") {
+          const key = materialKey(n, quality);
+          const cached = this.cache.get(key);
+          if (cached) {
+            this.cache.delete(key);
+            this.cache.set(key, cached);
+            outputs.set(id, cached);
+            cacheHits++;
+            return cached;
+          }
+          const scale =
+            quality === "preview"
+              ? Math.min(1, 768 / Math.max(n.width, n.height))
+              : 1;
+          const bytes =
+            Math.max(1, Math.round(n.width * scale)) *
+            Math.max(1, Math.round(n.height * scale)) *
+            4;
+          const allocated = [...outputs.values()]
+            .filter((o) => o.image instanceof HTMLCanvasElement)
+            .reduce((sum, o) => sum + o.image.width * o.image.height * 4, 0);
+          if (
+            allocated + bytes >
+            (quality === "export" ? 192 : 64) * 1024 * 1024
+          )
+            throw Error(
+              "This composition exceeds its intermediate-image budget. Include fewer outputs.",
+            );
+          const raster = await materialCanvas(n, quality);
+          abortIf(signal);
+          if (generation !== this.generation)
+            throw new DOMException("Obsolete output", "AbortError");
+          this.remember(key, raster, quality);
+          outputs.set(id, raster);
+          rendered++;
           return raster;
         }
         if (n.kind !== "afterimage")
@@ -336,22 +481,9 @@ export class FieldEvaluator {
         abortIf(signal);
         if (generation !== this.generation)
           throw new DOMException("Obsolete output", "AbortError");
-        this.cache.set(key, result);
+        this.remember(key, result, quality);
         outputs.set(id, result);
         rendered++;
-        const budget =
-          quality === "preview" ? 64 * 1024 * 1024 : 192 * 1024 * 1024;
-        let bytes = [...this.cache.values()].reduce(
-          (n, v) => n + v.image.width * v.image.height * 4,
-          0,
-        );
-        for (const [k, v] of this.cache) {
-          if (bytes <= budget) break;
-          if (k !== key) {
-            this.cache.delete(k);
-            bytes -= v.image.width * v.image.height * 4;
-          }
-        }
         await pause();
         abortIf(signal);
         return result;
@@ -376,12 +508,17 @@ export class CaptureRenderer {
   constructor(
     private readonly placements: Placement[],
     private readonly outputs: Map<string, Raster>,
+    private readonly background: string | null = null,
   ) {}
   draw(_params: Params, region: Rect, width: number, height: number) {
     this.canvas.width = width;
     this.canvas.height = height;
     const c = this.canvas.getContext("2d", { willReadFrequently: true })!;
     c.clearRect(0, 0, width, height);
+    if (this.background) {
+      c.fillStyle = this.background;
+      c.fillRect(0, 0, width, height);
+    }
     c.scale(width / region.width, height / region.height);
     c.translate(-region.x, -region.y);
     composeArtwork(c, this.placements, this.outputs);

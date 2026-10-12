@@ -1,5 +1,7 @@
 # Review status
 
+**12 October 2026 current implementation:** [FORM 0.2.0 FIELD/FRAME alpha](FIRST_ALPHA.md) supersedes older implementation/scope statements below. Shared editable text/shapes, artboards, grids, contact sheets, reusable AFTERIMAGE definitions and format-4 projects are implemented. CPU/build checks pass; live visual/GPU/recovery and native platform acceptance remain incomplete. Earlier proposals and evidence below are historical.
+
 **10 October, current FIELD:** the first connected workspace and composition/recovery implementation replaces the temporary single-study UI at the default URL. [FIRST_BUILD.md](FIRST_BUILD.md) separates implementation from evidence. Its CPU tests, TypeScript and production build pass; browser control remains blocked by a saved permission. New FIELD interaction, GPU export, IndexedDB recovery and visual approval remain pending. Historical verification below applies to the older bounded prototype, retained at `?legacy=1`.
 
 9 October 2026.

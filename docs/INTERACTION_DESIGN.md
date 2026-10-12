@@ -1,5 +1,7 @@
 # Interaction design
 
+**12 October 2026 current implementation:** [FORM 0.2.0 FIELD/FRAME alpha](FIRST_ALPHA.md) supersedes older implementation/scope statements below. Shared editable text/shapes, artboards, grids, contact sheets, reusable AFTERIMAGE definitions and format-4 projects are implemented. CPU/build checks pass; live visual/GPU/recovery and native platform acceptance remain incomplete. Earlier proposals and evidence below are historical.
+
 Status: proposal v0.1. The visual review contains schematic layouts, not a functional FIELD implementation.
 
 ## Spatial operations

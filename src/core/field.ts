@@ -1,4 +1,6 @@
 import { zipSync, strToU8 } from "fflate";
+import { validateMaterial, validateArtboards } from "./authoring.ts";
+import type { TextMaterial, ShapeMaterial, Artboard } from "./authoring.ts";
 import { defaults, validateParams } from "../../experiments/afterimage/core.ts";
 import type { Params, Point, Rect } from "../../experiments/afterimage/core.ts";
 import { validatePaintedMask } from "../../experiments/afterimage/mask.ts";
@@ -31,6 +33,8 @@ export type NodeBase = { id: string; name: string; position: Point };
 export type FieldNode = NodeBase &
   (
     | { kind: "image"; assetId: string }
+    | TextMaterial
+    | ShapeMaterial
     | { kind: "trajectory"; points: Params["path"] }
     | { kind: "selection"; coverage: Coverage; feather: number }
     | {
@@ -59,7 +63,8 @@ export type Placement = {
 };
 export type FieldDocument = {
   format: "form";
-  formatVersion: 3;
+  formatVersion: 4;
+  artboards: Artboard[];
   projectId: string;
   name: string;
   colour: {
@@ -126,7 +131,7 @@ export function validateField(value: unknown): asserts value is FieldDocument {
   if (
     !d ||
     d.format !== "form" ||
-    d.formatVersion !== 3 ||
+    d.formatVersion !== 4 ||
     !text(d.projectId) ||
     !text(d.name)
   )
@@ -148,6 +153,7 @@ export function validateField(value: unknown): asserts value is FieldDocument {
     d.assets.length > FIELD_LIMITS.assets
   )
     fail("FIELD project exceeds its object limits.");
+  validateArtboards(d.artboards);
   const assets = new Map<string, Asset>();
   let assetBytes = 0;
   for (const a of d.assets) {
@@ -193,6 +199,8 @@ export function validateField(value: unknown): asserts value is FieldDocument {
     nodes.set(n.id, n);
     if (n.kind === "image") {
       if (!assets.has(n.assetId)) fail("Photograph asset is missing.");
+    } else if (n.kind === "text" || n.kind === "shape") {
+      validateMaterial(n);
     } else if (n.kind === "trajectory") {
       if (
         !Array.isArray(n.points) ||
@@ -295,7 +303,8 @@ export function validateField(value: unknown): asserts value is FieldDocument {
 export function emptyField(id: string): FieldDocument {
   return {
     format: "form",
-    formatVersion: 3,
+    formatVersion: 4,
+    artboards: [],
     projectId: id,
     name: "Untitled field",
     colour: {
@@ -443,8 +452,12 @@ export function independentVariation(
   const next = structuredClone(d),
     original = next.placements.find((p) => p.id === placementId),
     node = next.nodes.find((n) => n.id === original?.nodeId);
-  if (!original || node?.kind !== "afterimage")
-    fail("Select an AFTERIMAGE output to make a variation.");
+  if (
+    !original ||
+    !node ||
+    !["afterimage", "text", "shape"].includes(node.kind)
+  )
+    fail("Select an AFTERIMAGE, text or shape output to make a variation.");
   // Clone editable upstream objects while sharing immutable image bytes.
   const cloned = new Map<string, string>();
   const cloneBranch = (sourceId: string): string => {
@@ -878,7 +891,7 @@ export async function encodeField(
   files["manifest.json"] = strToU8(
     JSON.stringify({
       format: "form",
-      formatVersion: 3,
+      formatVersion: 4,
       document: {
         path: "document.json",
         byteLength: document.length,
@@ -920,7 +933,7 @@ export async function decodeField(bytes: Uint8Array): Promise<{
       migrated: true,
     };
   }
-  if (manifest.format !== "form" || manifest.formatVersion !== 3)
+  if (manifest.format !== "form" || ![3, 4].includes(manifest.formatVersion))
     fail("Unsupported FIELD project version.");
   const content = entries.get("document.json")!,
     info = manifest.document;
@@ -932,6 +945,22 @@ export async function decodeField(bytes: Uint8Array): Promise<{
   )
     fail("FIELD document integrity check failed.");
   const document = json("document.json");
+  if (document.formatVersion !== manifest.formatVersion)
+    fail("Project document and manifest versions disagree.");
+  const migrated = document.formatVersion === 3;
+  if (migrated) {
+    // Version 3 cannot declare new authoring data; never silently drop it.
+    if (
+      document.artboards !== undefined ||
+      document.nodes?.some(
+        (n: { kind: string }) =>
+          !["image", "trajectory", "selection", "afterimage"].includes(n.kind),
+      )
+    )
+      fail("Unsupported objects in a version 3 document.");
+    document.formatVersion = 4;
+    document.artboards = [];
+  }
   validateField(document);
   const required = document.nodes.some((n) => n.kind === "afterimage")
     ? [{ id: "afterimage", version: 2 }]
@@ -957,5 +986,5 @@ export async function decodeField(bytes: Uint8Array): Promise<{
     [...entries.keys()].some((k) => !expected.has(k))
   )
     fail("Unexpected FIELD package entry.");
-  return { document: structuredClone(document), assets, migrated: false };
+  return { document: structuredClone(document), assets, migrated };
 }

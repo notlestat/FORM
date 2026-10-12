@@ -70,3 +70,8 @@ D31, corrective interaction: Corey reports canvas-image Shift-click does not mul
 
 
 D32, implemented distribution: after Corey's provisional success report and request to continue, add horizontal/vertical equal-gap and equal-centre distribution for at least three selected artworks. Order by transformed rectangle centres, with ID tie-breaking; keep both end placements exactly fixed. Equal gaps account for transformed sizes and reject insufficient room atomically; equal centres may overlap. Translate interior placements only, preserving all graph, scale/rotation/opacity/stacking data. Retain existing commands/codec/recovery/export. See ARTWORK_SPACING.md.
+
+
+## D33 — Shared FRAME alpha and reusable definitions, 12 October 2026
+
+Corey asked to build the fuller first version against the original FORM prompt and review it afterward. FIELD remains the open canvas; FRAME now uses the same graph/placements with optional artboards and grids. Editable Archivo text and shapes produce image outputs compatible with AFTERIMAGE. A contact sheet is a linked composition, not a claim that the full ARCHIVE instrument exists. Portable format 4 prevents older builds silently dropping this authoring data; formats 1–3 migrate without modifying original files. Single-AFTERIMAGE definitions contain data only; imported mask assets stay in the full project. LIVE, camera, other instruments, native hosting and TouchDesigner retain their separate engineering/acceptance work. [Implemented scope and evidence](FIRST_ALPHA.md).

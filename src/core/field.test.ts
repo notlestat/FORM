@@ -100,7 +100,7 @@ async function raw(d: FieldDocument, instrument = 2, extra = false) {
       "manifest.json": strToU8(
         JSON.stringify({
           format: "form",
-          formatVersion: 3,
+          formatVersion: d.formatVersion,
           document: {
             path: "document.json",
             byteLength: data.length,
@@ -1230,7 +1230,7 @@ test("distribution undo and redo restore all translations in one command", () =>
   commands.redo();
   assert.deepEqual(commands.state, spaced);
 });
-test("distributed artwork persists in format 3 and retains export extent without changing the instrument", async () => {
+test("distributed artwork persists in the current format and retains export extent without changing the instrument", async () => {
   const { d, ids, sizes } = distributionFixture(),
     spaced = distributeArtwork(d, ids, sizes, "x", "centres");
   assert.deepEqual(

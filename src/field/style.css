@@ -978,3 +978,135 @@ polyline.brush-ink {
   color: var(--muted);
   margin-top: 4px;
 }
+
+.environment-tabs {
+  display: flex;
+  gap: 2px;
+}
+.environment-tabs button {
+  font-size: 11px;
+  padding: 5px 7px;
+  min-height: 28px;
+  border-color: transparent;
+}
+.environment-tabs button[aria-pressed="true"] {
+  border-color: var(--rule);
+  background: var(--paper);
+}
+.place-menu {
+  position: relative;
+}
+.place-menu summary {
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  padding: 7px 10px;
+  font-size: 12px;
+  min-height: 32px;
+}
+.place-menu > div {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 30;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  display: grid;
+  min-width: 160px;
+  padding: 4px;
+  gap: 2px;
+}
+.place-menu button {
+  text-align: left;
+}
+.frame-artboard {
+  position: absolute;
+  pointer-events: none;
+  outline: 1px solid var(--rule);
+}
+.frame-artboard.selected-board {
+  outline: 2px solid var(--active);
+}
+.artboard-label {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  transform-origin: bottom left;
+  pointer-events: auto;
+  white-space: nowrap;
+  background: var(--paper);
+}
+.artboard-label small {
+  font-size: 10px;
+  margin-left: 8px;
+  color: var(--muted);
+}
+.layout-guides {
+  position: absolute;
+  pointer-events: none;
+  border-top: 1px solid #32654540;
+  border-bottom: 1px solid #32654540;
+}
+.layout-guides > div {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #3265450b;
+  border-left: 1px solid #32654530;
+  border-right: 1px solid #32654530;
+}
+.text-editor {
+  display: grid;
+  gap: 6px;
+}
+.text-editor textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  padding: 8px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+.text-editor textarea:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: 2px;
+}
+.color-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+.color-control input[type="color"] {
+  width: 40px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--rule);
+  background: transparent;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.environment-frame .dependency-lines {
+  display: none;
+}
+@media (max-width: 850px) {
+  .action-strip {
+    overflow: visible;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 48px;
+  }
+  .place-actions {
+    flex-wrap: wrap;
+  }
+  .environment-tabs button {
+    padding: 4px;
+    font-size: 10px;
+  }
+}

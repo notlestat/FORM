@@ -1,6 +1,6 @@
 # Instruments
 
-Status: proposal v0.1. Corey selected AFTERIMAGE as the first instrument. No image-processing algorithm has been implemented or artistically validated.
+Status, 12 October 2026: AFTERIMAGE version 2 is implemented with typed connections, editable trajectory/selection, seeds and reusable data-only definitions. Further instruments below remain proposals. Text and shapes are source materials, and contact sheets are a layout utility; neither claims full TYPE/ARCHIVE. Live rendering and artistic acceptance remain incomplete. See [current alpha](FIRST_ALPHA.md).
 
 ## Contract
 

@@ -1,3 +1,18 @@
+import {
+  defineInstrument,
+  applyInstrument,
+  parseDefinition,
+  INSTRUMENT_BYTES,
+} from "../core/instrument";
+import { NumberField, NameField } from "./controls";
+import { MaterialInspector, ArtboardInspector } from "./authoring-panels";
+import {
+  placeMaterial,
+  fitArtworkToArtboard,
+  contactSheet,
+} from "../core/frame";
+import { artboardAt, columnGuides } from "../core/authoring";
+import type { Artboard } from "../core/authoring";
 import React, {
   useCallback,
   useEffect,
@@ -78,7 +93,7 @@ import {
 } from "../core/arrangement";
 import type { Alignment, SpacingAxis, SpacingMode } from "../core/arrangement";
 
-type Selection = { kind: "node" | "placement"; id: string } | null;
+type Selection = { kind: "node" | "placement" | "artboard"; id: string } | null;
 type Mode = "select" | "trajectory" | "selection";
 type Prepared = {
   document: FieldDocument;
@@ -118,105 +133,6 @@ const processSignature = (d: FieldDocument) =>
   });
 const authoringSignature = (d: FieldDocument) =>
   JSON.stringify({ ...d, presentation: undefined });
-function NumberField({
-  label,
-  value,
-  onCommit,
-  step = 1,
-  min,
-  max,
-  disabled = false,
-}: {
-  label: string;
-  value: number;
-  onCommit: (n: number) => void;
-  step?: number;
-  min?: number;
-  max?: number;
-  disabled?: boolean;
-}) {
-  const [draft, setDraft] = useState(String(Number(value.toFixed(5)))),
-    cancelled = useRef(false);
-  useEffect(() => setDraft(String(Number(value.toFixed(5)))), [value]);
-  const finish = () => {
-    if (cancelled.current) {
-      cancelled.current = false;
-      setDraft(String(Number(value.toFixed(5))));
-      return;
-    }
-    const n = Number(draft);
-    if (
-      draft.trim() &&
-      Number.isFinite(n) &&
-      (min === undefined || n >= min) &&
-      (max === undefined || n <= max)
-    ) {
-      if (n !== Number(value.toFixed(5))) onCommit(n);
-    }
-    setDraft(String(Number(value.toFixed(5))));
-  };
-  return (
-    <label className="number-field">
-      <span>{label}</span>
-      <input
-        aria-label={label}
-        type="number"
-        value={draft}
-        step={step}
-        min={min}
-        max={max}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={finish}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") {
-            cancelled.current = true;
-            e.currentTarget.blur();
-          }
-        }}
-      />
-    </label>
-  );
-}
-function NameField({
-  value,
-  label,
-  onCommit,
-  disabled = false,
-}: {
-  value: string;
-  label: string;
-  onCommit: (s: string) => void;
-  disabled?: boolean;
-}) {
-  const [draft, setDraft] = useState(value),
-    cancel = useRef(false);
-  useEffect(() => setDraft(value), [value]);
-  return (
-    <input
-      className="name-field"
-      aria-label={label}
-      maxLength={160}
-      value={draft}
-      disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
-      onFocus={() => (cancel.current = false)}
-      onBlur={() => {
-        if (!cancel.current && draft.trim() && draft.trim() !== value)
-          onCommit(draft.trim());
-        setDraft(value);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          cancel.current = true;
-          e.currentTarget.blur();
-        }
-      }}
-    />
-  );
-}
 function Artwork({ raster }: { raster?: Raster }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -241,6 +157,8 @@ function FieldApp() {
     evaluator = useRef(new FieldEvaluator()),
     recovery = useRef(new RecoveryStore());
   const [doc, setDoc] = useState(initial.current),
+    [environment, setEnvironment] = useState<"field" | "frame">("field"),
+    [showGrid, setShowGrid] = useState(true),
     [camera, setCamera] = useState<Camera>(initial.current.presentation.camera),
     cameraRef = useRef(camera),
     [selection, setPrimarySelection] = useState<Selection>(null),
@@ -272,6 +190,7 @@ function FieldApp() {
     replaceInput = useRef<HTMLInputElement>(null),
     maskInput = useRef<HTMLInputElement>(null),
     projectInput = useRef<HTMLInputElement>(null),
+    instrumentInput = useRef<HTMLInputElement>(null),
     dialog = useRef<HTMLDialogElement>(null),
     gesture = useRef<(() => void) | null>(null),
     space = useRef(false),
@@ -281,7 +200,9 @@ function FieldApp() {
   cameraRef.current = camera;
   const signature = authoringSignature(doc),
     changed =
-      downloaded !== null ? downloaded !== signature : doc.nodes.length > 0;
+      downloaded !== null
+        ? downloaded !== signature
+        : doc.nodes.length > 0 || doc.artboards.length > 0;
   const sync = useCallback(() => setDoc(commands.current.state), []);
   const execute = (
     label: string,
@@ -318,6 +239,10 @@ function FieldApp() {
     doc.placements.some((p) => p.id === id),
   );
   const multipleArtwork = selectedArtworkIds.length > 1;
+  const selectedBoard =
+    selection?.kind === "artboard"
+      ? doc.artboards.find((b) => b.id === selection.id)
+      : undefined;
   const alignmentReady =
     !updating &&
     multipleArtwork &&
@@ -345,9 +270,11 @@ function FieldApp() {
         (selection?.kind === "node" ? selection.id : "")),
   );
   const operation =
-    currentNode?.kind === "afterimage"
-      ? currentNode
-      : doc.nodes.find((n) => n.id === branchId && n.kind === "afterimage");
+    selection?.kind === "artboard"
+      ? undefined
+      : currentNode?.kind === "afterimage"
+        ? currentNode
+        : doc.nodes.find((n) => n.id === branchId && n.kind === "afterimage");
   const pathEdge =
       operation &&
       doc.edges.find((e) => e.to === operation.id && e.input === "trajectory"),
@@ -384,6 +311,11 @@ function FieldApp() {
       setNotice(
         "Selected artwork removed. Undo restores it; shared process objects remain.",
       );
+    } else if (selection.kind === "artboard") {
+      execute("Remove artboard", (d) => {
+        d.artboards = d.artboards.filter((b) => b.id !== selection.id);
+      });
+      setSelection(null);
     } else if (selection.kind === "node") {
       execute("Delete process object", (d) => removeNode(d, selection.id));
       setNotice(
@@ -1104,7 +1036,8 @@ function FieldApp() {
   function fitView() {
     if (!field.current || locked) return;
     let bounds: Rect[] = [];
-    if (multipleArtwork && alignmentReady) {
+    if (environment === "frame" && selectedBoard) bounds = [selectedBoard];
+    else if (multipleArtwork && alignmentReady) {
       bounds = [selectionBounds(doc, selectedArtworkIds, result.outputs)];
     } else if (currentPlacement) {
       const r = result.outputs.get(currentPlacement.nodeId);
@@ -1133,9 +1066,14 @@ function FieldApp() {
         })
         .concat(
           doc.nodes
-            .filter((n) => n.kind !== "image")
+            .filter(
+              (n) =>
+                environment === "field" &&
+                ["trajectory", "selection", "afterimage"].includes(n.kind),
+            )
             .map((n) => ({ ...n.position, width: 226, height: 100 })),
         );
+    if (!bounds.length && environment === "frame") bounds = doc.artboards;
     if (!bounds.length) {
       setCamera({ x: 80, y: 140, scale: 0.45 });
       return;
@@ -1160,6 +1098,110 @@ function FieldApp() {
       scale,
     });
   }
+  const viewCentre = () => {
+    const el = field.current;
+    return screenToField(
+      { x: (el?.clientWidth ?? 1000) / 2, y: (el?.clientHeight ?? 700) / 2 },
+      cameraRef.current,
+    );
+  };
+  function createMaterial(kind: "text" | "rectangle" | "ellipse") {
+    const center = viewCentre();
+    let selectedId = "";
+    execute(`Place ${kind}`, (d) => {
+      const added = placeMaterial(
+        d,
+        kind,
+        { x: center.x - 200, y: center.y - 140 },
+        uuid,
+      );
+      selectedId = added.placementId;
+      return added.document;
+    });
+    if (selectedId) {
+      setMode("select");
+      setSelection({ kind: "placement", id: selectedId });
+      setBranchId(null);
+      setShowInspector(true);
+    }
+  }
+  function focusArtboard(b: Artboard) {
+    const el = field.current;
+    if (!el) return;
+    const scale = Math.max(
+      0.05,
+      Math.min(
+        2,
+        (el.clientWidth - 120) / b.width,
+        (el.clientHeight - 120) / b.height,
+      ),
+    );
+    setCamera({
+      x: el.clientWidth / 2 - (b.x + b.width / 2) * scale,
+      y: el.clientHeight / 2 - (b.y + b.height / 2) * scale,
+      scale,
+    });
+  }
+  function createContactSheet() {
+    let boardId = "";
+    execute("Create contact sheet", (d) => {
+      const sheet = contactSheet(d, selectedArtworkIds, result.outputs, uuid);
+      boardId = sheet.boardId;
+      return sheet.document;
+    });
+    const b = commands.current.state.artboards.find((b) => b.id === boardId);
+    if (b) {
+      setEnvironment("frame");
+      setSelection({ kind: "artboard", id: b.id });
+      setMode("select");
+      setShowInspector(true);
+      focusArtboard(b);
+    }
+  }
+  function moveArtboard(e: React.PointerEvent, b: Artboard) {
+    if (space.current || e.button === 1) {
+      pan(e);
+      return;
+    }
+    if (e.button !== 0 || locked) return;
+    setSelection({ kind: "artboard", id: b.id });
+    const start = worldPoint(e);
+    runGesture(e, "Move artboard", (p) => {
+      commands.current.execute("Move artboard", (d) => {
+        const target = d.artboards.find((v) => v.id === b.id)!;
+        target.x = b.x + p.x - start.x;
+        target.y = b.y + p.y - start.y;
+      });
+      sync();
+    });
+  }
+  function createArtboard() {
+    const id = uuid(),
+      center = viewCentre();
+    execute("Create artboard", (d) => {
+      const last = d.artboards.at(-1),
+        board = artboardAt(
+          id,
+          last
+            ? { x: last.x + last.width + 160, y: last.y }
+            : { x: center.x - 540, y: center.y - 675 },
+        );
+      board.name = `Artboard ${d.artboards.length + 1}`;
+      d.artboards.push(board);
+    });
+    if (commands.current.state.artboards.some((b) => b.id === id)) {
+      setEnvironment("frame");
+      setMode("select");
+      setSelection({ kind: "artboard", id });
+      setShowInspector(true);
+      focusArtboard(commands.current.state.artboards.find((b) => b.id === id)!);
+    }
+  }
+  const editBoard = (id: string, edit: (b: Artboard) => void) =>
+    execute("Edit artboard", (d) => {
+      const b = d.artboards.find((b) => b.id === id);
+      if (b) edit(b);
+    });
   function createOperation() {
     const image =
         currentNode && outputType(currentNode) === "Image2D"
@@ -1185,6 +1227,72 @@ function FieldApp() {
         commands.current.state.placements.find((p) => p.id === selectedId)!
           .nodeId,
       );
+    }
+  }
+  function saveInstrument() {
+    if (locked || operation?.kind !== "afterimage" || !imageEdge) return;
+    const source = result.outputs.get(imageEdge.from);
+    if (!source) {
+      setError("Wait for the connected source to render first.");
+      return;
+    }
+    try {
+      const definition = defineInstrument(snapshot(), operation.id, source);
+      download(
+        new Blob([JSON.stringify(definition, null, 2)], {
+          type: "application/json",
+        }),
+        `${cleanName(definition.name)}.form-instrument`,
+      );
+      setNotice(
+        "Instrument definition prepared. Apply it to another source using Load instrument.",
+      );
+    } catch (e) {
+      setError(friendly(e));
+    }
+  }
+  async function loadInstrument(file: File) {
+    if (locked) return;
+    const source =
+      currentNode && outputType(currentNode) === "Image2D" ? currentNode : null;
+    const raster = source && result.outputs.get(source.id);
+    if (!source || !raster) {
+      setError(
+        "Select a rendered photograph, text, shape or output to receive the instrument.",
+      );
+      return;
+    }
+    if (file.size > INSTRUMENT_BYTES) {
+      setError("Instrument file exceeds 256 KiB.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const definition = parseDefinition(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+      let placementId = "";
+      commands.current.execute("Apply instrument", (d) => {
+        const added = applyInstrument(d, source.id, raster, definition, uuid);
+        placementId = added.placementId;
+        return added.document;
+      });
+      sync();
+      setSelection({ kind: "placement", id: placementId });
+      setMode("select");
+      setBranchId(
+        commands.current.state.placements.find((p) => p.id === placementId)!
+          .nodeId,
+      );
+      setShowInspector(true);
+      setNotice(
+        `Applied ${definition.name}. Its trajectory scales to this source; normalized selection is retained.`,
+      );
+    } catch (e) {
+      setError(friendly(e));
+    } finally {
+      setBusy(false);
     }
   }
   async function importPhoto(file: File, asMask = false) {
@@ -1366,6 +1474,7 @@ function FieldApp() {
     setDoc(p.document);
     setCamera(p.document.presentation.camera);
     setProof(p.document.presentation.proof);
+    setEnvironment(p.document.artboards.length ? "frame" : "field");
     setSelection(null);
     setBranchId(null);
     setResult(blankResult());
@@ -1394,6 +1503,7 @@ function FieldApp() {
       const d = emptyField(uuid());
       commands.current = new FieldCommands(d);
       setDoc(d);
+      setEnvironment("field");
       setCamera(d.presentation.camera);
       setSelection(null);
       setBranchId(null);
@@ -1425,11 +1535,11 @@ function FieldApp() {
       setBusy(false);
     }
   }
-  async function exportArtwork(size = 4096) {
+  async function exportArtwork(size = 4096, board?: Artboard) {
     if (locked) return;
     const d = snapshot(),
       included = d.placements.filter(isExportedArtwork);
-    if (!included.length) {
+    if (!included.length && !board) {
       setError(
         "Include visible artwork with opacity above 0% in the export first.",
       );
@@ -1452,13 +1562,18 @@ function FieldApp() {
       );
       if (results.errors.size)
         throw Error([...results.errors.values()].join(" "));
-      const region = artworkBounds(d.placements, results.outputs);
+      const region = board ?? artworkBounds(d.placements, results.outputs);
       const ratio = region.width / region.height,
-        dimensions =
-          ratio >= 1
+        dimensions = board
+          ? { width: board.width, height: board.height }
+          : ratio >= 1
             ? { width: size, height: Math.max(1, Math.round(size / ratio)) }
             : { width: Math.max(1, Math.round(size * ratio)), height: size };
-      const renderer = new CaptureRenderer(d.placements, results.outputs),
+      const renderer = new CaptureRenderer(
+          d.placements,
+          results.outputs,
+          board?.background,
+        ),
         blob = await exportPNG(
           renderer,
           defaults(1, 1),
@@ -1471,10 +1586,10 @@ function FieldApp() {
         throw new DOMException("Export cancelled", "AbortError");
       download(
         blob,
-        `${cleanName(d.name)}-${dimensions.width}x${dimensions.height}.png`,
+        `${cleanName(d.name)}${board ? "-" + cleanName(board.name) : ""}-${dimensions.width}x${dimensions.height}.png`,
       );
       setNotice(
-        `Transparent ${dimensions.width} × ${dimensions.height} PNG prepared from the included artwork.`,
+        `${dimensions.width} × ${dimensions.height} PNG prepared${board ? " from " + board.name : " with a transparent background"}.`,
       );
     } catch (e) {
       setNotice(
@@ -1633,7 +1748,9 @@ function FieldApp() {
         : null;
   const modeHelp =
     mode === "select"
-      ? "Drag artwork to compose. Space-drag pans; pinch zooms; F fits."
+      ? environment === "frame"
+        ? "Compose on artboards. Select an artboard to export its exact size. Space-drag pans; F fits."
+        : "Drag artwork to compose. Space-drag pans; pinch zooms; F fits."
       : mode === "trajectory"
         ? "Draw on the selected output or move its handles. Escape cancels."
         : "Edit selection on the input photograph. Paint or draw a boundary; Escape cancels.";
@@ -1642,7 +1759,32 @@ function FieldApp() {
       <header className="command-strip">
         <div className="identity">
           <span className="wordmark">FORM</span>
-          <span className="environment">Field</span>
+          <div
+            className="environment-tabs"
+            role="group"
+            aria-label="Environment"
+          >
+            <button
+              aria-pressed={environment === "field"}
+              disabled={locked}
+              onClick={() => {
+                setEnvironment("field");
+                if (selection?.kind === "artboard") setSelection(null);
+              }}
+            >
+              FIELD
+            </button>
+            <button
+              aria-pressed={environment === "frame"}
+              disabled={locked}
+              onClick={() => {
+                setEnvironment("frame");
+                setMode("select");
+              }}
+            >
+              FRAME
+            </button>
+          </div>
         </div>
         <div className="project-title">
           <NameField
@@ -1678,10 +1820,17 @@ function FieldApp() {
           </button>
           <button
             className="primary"
-            disabled={locked || !renderable}
-            onClick={() => void exportArtwork()}
+            disabled={locked || (!renderable && !selectedBoard)}
+            onClick={() =>
+              void exportArtwork(
+                4096,
+                environment === "frame" ? selectedBoard : undefined,
+              )
+            }
           >
-            Export PNG
+            {environment === "frame" && selectedBoard
+              ? "Export artboard"
+              : "Export PNG"}
           </button>
         </nav>
       </header>
@@ -1690,6 +1839,39 @@ function FieldApp() {
           <button disabled={locked} onClick={() => photoInput.current?.click()}>
             Place photograph
           </button>
+          <details className="place-menu">
+            <summary>Place material</summary>
+            <div>
+              <button disabled={locked} onClick={() => createMaterial("text")}>
+                Text
+              </button>
+              <button
+                disabled={locked}
+                onClick={() => createMaterial("rectangle")}
+              >
+                Rectangle
+              </button>
+              <button
+                disabled={locked}
+                onClick={() => createMaterial("ellipse")}
+              >
+                Ellipse
+              </button>
+              <button disabled={locked} onClick={createArtboard}>
+                Artboard
+              </button>
+              <button
+                disabled={
+                  locked ||
+                  !currentNode ||
+                  outputType(currentNode) !== "Image2D"
+                }
+                onClick={() => instrumentInput.current?.click()}
+              >
+                Load instrument
+              </button>
+            </div>
+          </details>
           <button
             disabled={locked || !renderable || multipleArtwork}
             onClick={createOperation}
@@ -1767,13 +1949,48 @@ function FieldApp() {
         className={`work-area ${!showObjects ? "objects-hidden" : ""} ${!showInspector ? "inspector-hidden" : ""}`}
       >
         {showObjects && (
-          <aside className="objects-panel" aria-label="FIELD objects">
+          <aside className="objects-panel" aria-label="Project objects">
             <div className="panel-heading">
               <h2>Objects</h2>
               <button className="quiet" onClick={() => setShowObjects(false)}>
                 Hide
               </button>
             </div>
+            {environment === "frame" && (
+              <>
+                <h3>Artboards</h3>
+                <button disabled={locked} onClick={createArtboard}>
+                  Add artboard
+                </button>
+                <ul>
+                  {doc.artboards.map((b) => (
+                    <li key={b.id}>
+                      <button
+                        disabled={locked}
+                        className={selectedBoard?.id === b.id ? "selected" : ""}
+                        onClick={() => {
+                          setSelection({ kind: "artboard", id: b.id });
+                          setShowInspector(true);
+                        }}
+                      >
+                        <span>{b.name}</span>
+                        <small>
+                          {b.width} × {b.height}
+                        </small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={showGrid}
+                    onChange={(e) => setShowGrid(e.target.checked)}
+                  />{" "}
+                  Show layout guides
+                </label>
+              </>
+            )}
             <h3>
               Artwork{" "}
               <small className="layer-direction">
@@ -1818,24 +2035,30 @@ function FieldApp() {
             </ul>
             <h3>Process</h3>
             <ul>
-              {doc.nodes.map((n) => (
-                <li key={n.id}>
-                  <button
-                    disabled={locked}
-                    className={
-                      selection?.kind === "node" && selection.id === n.id
-                        ? "selected"
-                        : ""
-                    }
-                    onClick={() => select({ kind: "node", id: n.id })}
-                  >
-                    <span>{n.name}</span>
-                    <small>
-                      {n.kind === "afterimage" ? "AFTERIMAGE" : outputType(n)}
-                    </small>
-                  </button>
-                </li>
-              ))}
+              {doc.nodes
+                .filter((n) =>
+                  ["image", "trajectory", "selection", "afterimage"].includes(
+                    n.kind,
+                  ),
+                )
+                .map((n) => (
+                  <li key={n.id}>
+                    <button
+                      disabled={locked}
+                      className={
+                        selection?.kind === "node" && selection.id === n.id
+                          ? "selected"
+                          : ""
+                      }
+                      onClick={() => select({ kind: "node", id: n.id })}
+                    >
+                      <span>{n.name}</span>
+                      <small>
+                        {n.kind === "afterimage" ? "AFTERIMAGE" : outputType(n)}
+                      </small>
+                    </button>
+                  </li>
+                ))}
             </ul>
             {!doc.nodes.length && (
               <p className="empty-help">
@@ -1847,33 +2070,87 @@ function FieldApp() {
         )}
         <main
           ref={field}
-          className={`field-stage mode-${mode}`}
-          aria-label="Spatial FIELD workspace"
+          className={`field-stage mode-${mode} environment-${environment}`}
+          aria-label={
+            environment === "field"
+              ? "Spatial FIELD workspace"
+              : "FRAME composition workspace"
+          }
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) canvasDown(e);
           }}
         >
           <div className="field-help">{modeHelp}</div>
-          {!renderable && (
-            <div className="empty-field">
-              <span className="empty-mark">FORM</span>
-              <p>A field for material and process.</p>
-              <button
-                disabled={locked}
-                onClick={() => photoInput.current?.click()}
-              >
-                Place a photograph
-              </button>
-            </div>
-          )}
+          {!renderable &&
+            !(environment === "frame" && doc.artboards.length) && (
+              <div className="empty-field">
+                <span className="empty-mark">FORM</span>
+                <p>A field for material and process.</p>
+                <button
+                  disabled={locked}
+                  onClick={() => photoInput.current?.click()}
+                >
+                  Place a photograph
+                </button>
+              </div>
+            )}
           <div
             className="field-world"
             style={{
               transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
             }}
           >
+            {environment === "frame" &&
+              doc.artboards.map((b) => (
+                <section
+                  key={b.id}
+                  className={`frame-artboard ${selectedBoard?.id === b.id ? "selected-board" : ""}`}
+                  style={{
+                    left: b.x,
+                    top: b.y,
+                    width: b.width,
+                    height: b.height,
+                    background: b.background ?? "transparent",
+                  }}
+                  aria-label={b.name}
+                >
+                  <button
+                    className="artboard-label"
+                    style={{ transform: `scale(${1 / camera.scale})` }}
+                    disabled={locked}
+                    onPointerDown={(e) => moveArtboard(e, b)}
+                    onClick={(e) => {
+                      if (e.detail === 0) {
+                        setSelection({ kind: "artboard", id: b.id });
+                        setShowInspector(true);
+                      }
+                    }}
+                  >
+                    {b.name}{" "}
+                    <small>
+                      {b.width} × {b.height}
+                    </small>
+                  </button>
+                  {showGrid && (
+                    <div
+                      className="layout-guides"
+                      style={{
+                        top: b.margin,
+                        bottom: b.margin,
+                        left: 0,
+                        right: 0,
+                      }}
+                    >
+                      {columnGuides(b).map((g, i) => (
+                        <div key={i} style={{ left: g.x, width: g.width }} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ))}
             <svg
               className="dependency-lines"
+              style={{ display: environment === "frame" ? "none" : undefined }}
               width="1"
               height="1"
               aria-hidden="true"
@@ -2252,7 +2529,11 @@ function FieldApp() {
                 );
               })}
             {doc.nodes
-              .filter((n) => n.kind !== "image")
+              .filter(
+                (n) =>
+                  environment === "field" &&
+                  ["trajectory", "selection", "afterimage"].includes(n.kind),
+              )
               .map((n) => {
                 const selected =
                     selection?.kind === "node" && selection.id === n.id,
@@ -2378,20 +2659,111 @@ function FieldApp() {
                   ? `${selectedArtworkIds.length} artworks`
                   : currentPlacement
                     ? "Artwork"
-                    : currentNode
-                      ? currentNode.kind === "image"
-                        ? "Photograph"
-                        : currentNode.kind === "afterimage"
-                          ? "AFTERIMAGE"
-                          : currentNode.kind === "trajectory"
-                            ? "Trajectory"
-                            : "Selection"
-                      : "Field"}
+                    : selectedBoard
+                      ? "Artboard"
+                      : currentNode
+                        ? currentNode.kind === "image"
+                          ? "Photograph"
+                          : currentNode.kind === "afterimage"
+                            ? "AFTERIMAGE"
+                            : currentNode.kind === "trajectory"
+                              ? "Trajectory"
+                              : currentNode.kind === "text"
+                                ? "Text"
+                                : currentNode.kind === "shape"
+                                  ? "Shape"
+                                  : "Selection"
+                        : "Field"}
               </h2>
               <button className="quiet" onClick={() => setShowInspector(false)}>
                 Hide
               </button>
             </div>
+            {selectedBoard && (
+              <ArtboardInspector
+                board={selectedBoard}
+                locked={locked}
+                edit={(edit) => editBoard(selectedBoard.id, edit)}
+                onDelete={deleteSelection}
+                onExport={() => void exportArtwork(4096, selectedBoard)}
+              />
+            )}
+            {environment === "frame" &&
+              !selectedBoard &&
+              selectedArtworkIds.length > 0 &&
+              doc.artboards.length > 0 && (
+                <section className="inspector-section">
+                  <h3>Fit to artboard</h3>
+                  <p className="control-help">
+                    Fits the selected artwork together inside the margins,
+                    keeping its proportions.
+                  </p>
+                  {doc.artboards.map((b) => (
+                    <button
+                      key={b.id}
+                      disabled={
+                        locked ||
+                        updating ||
+                        !selectedArtworkIds.every((id) =>
+                          result.outputs.has(
+                            doc.placements.find((p) => p.id === id)!.nodeId,
+                          ),
+                        )
+                      }
+                      onClick={() =>
+                        execute("Fit artwork to artboard", (d) =>
+                          fitArtworkToArtboard(
+                            d,
+                            selectedArtworkIds,
+                            result.outputs,
+                            b,
+                          ),
+                        )
+                      }
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </section>
+              )}
+            {currentNode &&
+              (currentNode.kind === "text" || currentNode.kind === "shape") &&
+              !multipleArtwork && (
+                <MaterialInspector
+                  key={currentNode.id}
+                  node={currentNode}
+                  locked={locked}
+                  edit={(edit) =>
+                    patchNode(currentNode.id, "Edit material", (n) => {
+                      if (n.kind === "text" || n.kind === "shape") edit(n);
+                    })
+                  }
+                />
+              )}
+            {selectedArtworkIds.length > 0 && (
+              <section className="inspector-section">
+                <h3>Study collection</h3>
+                <button
+                  disabled={
+                    locked ||
+                    updating ||
+                    selectedArtworkIds.length > 12 ||
+                    !selectedArtworkIds.every((id) =>
+                      result.outputs.has(
+                        doc.placements.find((p) => p.id === id)!.nodeId,
+                      ),
+                    )
+                  }
+                  onClick={createContactSheet}
+                >
+                  Make contact sheet
+                </button>
+                <p className="control-help">
+                  Creates an artboard with linked copies and editable captions.
+                  Select up to 12 artworks; their originals stay in place.
+                </p>
+              </section>
+            )}
             {multipleArtwork && (
               <section className="inspector-section">
                 <h3>Align selection</h3>
@@ -2679,7 +3051,13 @@ function FieldApp() {
                     Linked copy
                   </button>
                   <button
-                    disabled={locked || currentNode?.kind !== "afterimage"}
+                    disabled={
+                      locked ||
+                      !currentNode ||
+                      !["afterimage", "text", "shape"].includes(
+                        currentNode.kind,
+                      )
+                    }
                     onClick={() => {
                       let id = "";
                       execute("Make independent variation", (d) => {
@@ -2941,6 +3319,21 @@ function FieldApp() {
                     Edit selection
                   </button>
                 </div>
+                <details>
+                  <summary>Reusable instrument</summary>
+                  <p className="control-help">
+                    Save this AFTERIMAGE with its trajectory, selection and
+                    seed. Select another visual source, then choose Place
+                    material → Load instrument to apply it. The file contains
+                    editable settings.
+                  </p>
+                  <button
+                    disabled={locked || updating || !imageEdge}
+                    onClick={saveInstrument}
+                  >
+                    Save instrument
+                  </button>
+                </details>
                 <details>
                   <summary>Output frame</summary>
                   <p className="control-help">
@@ -3495,6 +3888,17 @@ function FieldApp() {
           const f = e.target.files?.[0];
           e.target.value = "";
           if (f) void importPhoto(f, true);
+        }}
+      />
+      <input
+        ref={instrumentInput}
+        type="file"
+        hidden
+        accept=".form-instrument,application/json"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void loadInstrument(file);
         }}
       />
       <input

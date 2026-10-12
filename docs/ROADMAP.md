@@ -1,5 +1,7 @@
 # Roadmap
 
+**12 October 2026 current implementation:** [FORM 0.2.0 FIELD/FRAME alpha](FIRST_ALPHA.md) supersedes older implementation/scope statements below. Shared editable text/shapes, artboards, grids, contact sheets, reusable AFTERIMAGE definitions and format-4 projects are implemented. CPU/build checks pass; live visual/GPU/recovery and native platform acceptance remain incomplete. Earlier proposals and evidence below are historical.
+
 **10 October update:** Corey authorised the complete first FIELD build. The shared-graph vertical slice, composition, format-3 persistence and browser recovery are now implemented on `codex/field-first-build`. [Current scope and acceptance evidence](FIRST_BUILD.md) supersedes the phase-1-only boundary and older implementation status below. Integrated live/GPU/recovery verification remains pending; this is not a native desktop acceptance pass.
 
 Status: phase 1 approved and underway, 9 October 2026. Local implementation and results are recorded in [PHASE1_RESULTS.md](PHASE1_RESULTS.md). No dates are promised before the technical and creative experiments establish scope.
