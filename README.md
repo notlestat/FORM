@@ -1,6 +1,6 @@
 # FORM
 
-An experimental creative environment by Corey Kavanagh. AFTERIMAGE is its first instrument for spatial image studies.
+An experimental creative environment. AFTERIMAGE is its first instrument for spatial image studies.
 
 ## Repository status
 
