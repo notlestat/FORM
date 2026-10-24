@@ -1,51 +1,127 @@
 # FORM
 
-Experimental creative environment: place sources, connect processes, shape their outputs and compose artwork.
+FORM is an experimental browser app for turning photographs into layered exposure studies and composing them with text and shapes.
 
-FORM 0.2.0 implements connected FIELD authoring and a minimum FRAME composition environment on `codex/first-alpha-frame`. AFTERIMAGE remains the first instrument. The expanded alpha adds editable Archivo text and geometric shapes, artboards with layout guides, proportionate group fitting, editable contact sheets, reusable AFTERIMAGE definitions and format-4 portable projects. See [alpha scope and test guide](docs/FIRST_ALPHA.md). Earlier interactions were accepted provisionally by Corey; this build still needs live visual/interaction and recovery review.
+Use FIELD to arrange photographs and shape AFTERIMAGE effects along editable paths. Switch to FRAME to compose the same artwork on artboards, add layout guides, or make contact sheets. Save an editable `.form` project or export a PNG.
 
-## Run
+The current version is the 0.2.0 alpha. It runs locally in a desktop browser on your computer. There is no desktop installer, account, API key, or backend service to configure. Windows, macOS, and Linux setup uses the same npm commands. Browser and GPU behavior still needs testing across devices.
+
+## Run on your computer
+
+### 1. Install the requirements
+
+Install [Node.js 24 LTS](https://nodejs.org/en/download), which includes npm. FORM requires Node.js 22.12.0 or newer. Use a current desktop browser with WebGL 2 and graphics acceleration enabled, such as Chrome or Edge.
+
+After installing Node.js, open a new terminal. On Windows, use Command Prompt or PowerShell. On macOS or Linux, use Terminal. Check the installation:
+
+```sh
+node --version
+npm --version
+```
+
+### 2. Download FORM
+
+The runnable alpha is on [`codex/first-alpha-frame`](https://github.com/notlestat/FORM/tree/codex/first-alpha-frame), pending review in [pull request #6](https://github.com/notlestat/FORM/pull/6). The `main` branch currently contains repository setup and planning documents.
+
+Without Git, [download the alpha ZIP](https://github.com/notlestat/FORM/archive/refs/heads/codex/first-alpha-frame.zip). Extract the ZIP, then open a terminal in the extracted folder that contains `package.json`.
+
+On Windows, open that folder in File Explorer, type `cmd` in the address bar, and press Enter. On macOS or Linux, type `cd ` in Terminal, drag the extracted folder into the window, then press Enter.
+
+If you already have [Git](https://git-scm.com/downloads), clone the alpha instead:
+
+```sh
+git clone --branch codex/first-alpha-frame --single-branch https://github.com/notlestat/FORM.git
+cd FORM
+```
+
+### 3. Install and start
+
+Run these commands in the folder containing `package.json`:
 
 ```sh
 npm ci
 npm run dev -- --port 5174 --strictPort
 ```
 
-Open [the local FIELD preview](http://127.0.0.1:5174/). The older bounded study remains available at [Legacy study](http://127.0.0.1:5174/?legacy=1); it saves version 2 files. The default app saves format 4 and reads formats 1–4 by explicit migration. Legacy and older FIELD builds cannot open format 4.
+The first command downloads the dependencies. Keep the terminal open while you use FORM.
 
-1. Place a JPEG/PNG photograph, select it, then Create AFTERIMAGE.
-2. Select the output. Draw a trajectory over it or edit its handles/numeric points.
-3. Select Selection mode and edit the input photograph's coverage: ellipse, painted subject, closed boundary or imported luminance mask.
-4. Linked copy places the same output again. Vary copies the editable upstream branch so it can develop independently.
-5. Move, scale or rotate artwork. Shift-click images or Objects entries to select several; drag the selection together or use Align selection in the inspector. With three or more artworks, Distribute selection offers equal gaps or equal centres on either axis. Use Layer order to arrange overlaps and Opacity % to blend each placement. Mark the placements you want to include in export. The board stays an open canvas.
-6. In FRAME, add an artboard, place Text/Rectangle/Ellipse using Place material, and fit selected artwork inside its margins. Select its label or Objects entry to export exact artboard dimensions. Make contact sheet creates linked copies with editable captions.
-7. Save a portable `.form` file, reopen it, then export a transparent PNG at a 2K or 4K long edge.
+Open [http://127.0.0.1:5174/](http://127.0.0.1:5174/) in your browser. You should see FIELD with a sample marble-head photograph and an AFTERIMAGE output.
 
-Process stations arrange the dependency diagram; artwork placement changes the composition and export. Space + drag pans; wheel pans; pinch/Cmd/Ctrl + wheel zooms; F fits the selection. Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z or Ctrl+Y redoes; Escape cancels a gesture. Numeric controls provide precise alternatives. Delete/Backspace removes the selection; typing fields retain normal editing. Hold Shift while dragging a size handle to preserve current proportions. Rotation uses the artwork centre for both the handle and numeric control and supports continuous full turns. Export fits the included artwork automatically, independently of the viewport and proof background.
+To stop FORM, press **Ctrl+C** in the terminal. To use it again, open a terminal in the same folder and run:
 
-Local recovery keeps a browser-stored project snapshot after edits settle. A previous snapshot is offered for review on startup. Save a downloaded `.form` file for a portable copy; browser storage can be cleared and is not a backup.
+```sh
+npm run dev -- --port 5174 --strictPort
+```
 
-## Verify
+You only need `npm ci` again after changing dependencies or downloading a different version. Internet access is needed to download the project and dependencies. Image processing and project storage happen locally in the browser; the app uses bundled fonts and a bundled sample photograph.
+
+## Make and save a study
+
+1. Try the sample first. Select its AFTERIMAGE output, then choose **Trajectory** to draw a path or move its handles.
+2. To use your own image, choose **Place photograph** and select a JPEG or PNG. Select the photograph, then choose **Create AFTERIMAGE**.
+3. Choose **Selection** to control which part of the photograph contributes to the effect. Choose an ellipse, paint a selection, draw a closed boundary, or import a luminance mask.
+4. Move, resize, or rotate the artwork. Use **Linked copy** to repeat the same output or **Vary** to make an independently editable version.
+5. Switch to **FRAME**. Choose **Place material** → **Artboard**, then add text, rectangles, or ellipses from the same menu. Select the artboard to set its dimensions and guides.
+6. Choose **Save** to download an editable `.form` project. Use **Open** to load it later, including on another computer running this alpha.
+7. Choose **Export PNG** for a composition, or select a FRAME artboard and choose **Export artboard** for an image at its exact dimensions. Check each artwork's **In export** setting to control what appears.
+
+Photographs must fit within 4096 pixels per edge and 16 megapixels. FIELD supports PNG export with a 2K or 4K long edge. FRAME artboards support dimensions up to 8192 pixels per edge. Exports are raster images; editable text and shapes remain in the `.form` project.
+
+### Keep a portable copy
+
+A `.form` file embeds the original photographs and editable project settings. Save one to a folder you can find again. PNG export saves an image, not an editable project.
+
+FORM also stores a recovery snapshot in the browser after edits settle and offers an earlier snapshot on startup. Browser storage can be cleared and is not a backup. Use the same browser and local address for recovery; another browser, port, or private browsing session uses separate storage.
+
+This alpha saves project format 4 and reads formats 1 through 4. Older builds cannot open format 4. The [legacy study](http://127.0.0.1:5174/?legacy=1) is available separately and saves version 2 files.
+
+### Use the canvas controls
+
+- Hold **Space** and drag to pan. Scroll to pan, or pinch to zoom. Hold **Ctrl** on Windows or Linux, or **Command** on macOS, while scrolling to zoom.
+- Press **F** to fit the selection in view.
+- **Shift-click** artwork to select several items. Alignment controls appear in the inspector; spacing controls appear with three or more selected artworks.
+- Hold **Shift** while dragging a size handle to preserve proportions.
+- Use **Ctrl+Z** to undo and **Ctrl+Y** or **Ctrl+Shift+Z** to redo on Windows or Linux. On macOS, use **Command+Z** and **Command+Shift+Z**.
+- Press **Delete** or **Backspace** to remove the selection. Press **Escape** to cancel a gesture. Text fields keep their normal editing behavior.
+
+## Fix setup problems
+
+- If `node` or `npm` is not recognized, install Node.js and open a new terminal.
+- If npm reports a missing `package.json`, open the terminal in the extracted project folder. Check that you downloaded the alpha branch rather than `main`.
+- If PowerShell blocks `npm.ps1`, use Command Prompt, or run `npm.cmd` in place of `npm`.
+- If port 5174 is in use, stop an earlier FORM server or run `npm run dev -- --port 5175 --strictPort`. Open the address printed in the terminal. Recovery from port 5174 is separate.
+- If the canvas fails to render or reports a WebGL error, enable graphics acceleration in your browser, restart it, and update your graphics driver. Try another browser with WebGL 2 support. A successful build does not establish GPU compatibility.
+- If an image is rejected, convert it to JPEG or PNG and resize it within the limits above.
+- If opening `index.html` directly does not work, start the local server with `npm run dev` and use its HTTP address.
+
+## Build and check the project
+
+To build the app and serve the built files locally:
+
+```sh
+npm run build
+npm run preview -- --port 4173 --strictPort
+```
+
+Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/). The build writes files to `dist/`. The preview server listens on your computer's loopback address. Its separate port also means separate recovery storage.
+
+To run the automated CPU tests:
 
 ```sh
 npm test
-npm run build
-git diff --check
 ```
 
-120 CPU tests pass as of 12 October 2026. Technical checks in the inspector can compare same-browser composition tiles after browser access is restored. That comparison does not establish cross-device GPU equivalence.
+These tests cover project files, editing commands, geometry, and instrument definitions. They do not verify browser rendering, visual quality, or recovery after restarting a browser.
 
-The interface follows the written brief: self-hosted Archivo, restrained monochrome surfaces, thin rules, direct handles and contextual panels. Visual references have not been supplied; Corey accepted the preceding interface provisionally; the expanded alpha controls await review. The initial public-domain marble-head fixture is credited in [experiment instructions](experiments/README.md).
+## Project status and further reading
 
-## Project references
+FORM is an alpha with unfinished visual, interaction, recovery, and device acceptance checks. Native desktop apps, LIVE, camera and screen capture, TouchDesigner integration, additional instruments, and vector export remain future work.
 
-- [Expanded alpha and test guide](docs/FIRST_ALPHA.md)
-- [Artwork spacing](docs/ARTWORK_SPACING.md), [Artwork alignment](docs/ARTWORK_ALIGNMENT.md), [Artwork composition](docs/ARTWORK_COMPOSITION.md), [First FIELD build](docs/FIRST_BUILD.md), [architecture](docs/ARCHITECTURE.md), [design system](docs/DESIGN_SYSTEM.md)
-- [Product vision](docs/PRODUCT_VISION.md), [interaction design](docs/INTERACTION_DESIGN.md), [roadmap](docs/ROADMAP.md)
-- [Instruments](docs/INSTRUMENTS.md), [TouchDesigner bridge](docs/TOUCHDESIGNER.md), [research](docs/RESEARCH.md)
-- [Historical phase 1 evidence](docs/PHASE1_RESULTS.md), [review status](docs/REVIEW_STATUS.md), [GitHub workflow](docs/GITHUB.md)
-- [Original three-concept planning review](.lavish/form-plan/index.html)
+- [Alpha scope and manual test guide](docs/FIRST_ALPHA.md)
+- [Architecture](docs/ARCHITECTURE.md) and [design system](docs/DESIGN_SYSTEM.md)
+- [Product vision](docs/PRODUCT_VISION.md) and [roadmap](docs/ROADMAP.md)
+- [Project file history](docs/PROJECT_FILES.md) and [editing commands](docs/COMMANDS.md)
+- [Development and pull request workflow](docs/GITHUB.md)
+- [Sample photograph provenance](public/fixtures/README.md) and [Archivo font license](public/Archivo-OFL.txt)
 
-Advanced FRAME typography/vector export, LIVE, camera/screen capture, further instruments, arbitrary custom subgraphs, TouchDesigner integration and native macOS/Windows hosting remain future milestones. No native platform support or complete acceptance pass is claimed.
-
-Source is public at [notlestat/FORM](https://github.com/notlestat/FORM). Pull requests target `main`; merging requires Corey's explicit approval.
+Some linked documents describe earlier milestones. The alpha scope guide records the current implementation. Pull requests target `main` and require review and explicit approval before merging.
