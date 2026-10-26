@@ -1,5 +1,9 @@
 # GitHub review workflow
 
+26 October 2026: the FORM 0.2.0 alpha and local setup instructions reach `main` through [PR #6](https://github.com/notlestat/FORM/pull/6), following the request to update the public repository. The README links to the `main` ZIP and uses a standard clone command. The app remains an alpha with the device and acceptance limits described in [the scope guide](FIRST_ALPHA.md).
+
+The entries below are historical snapshots. Their open-PR and branch-status statements describe the dates recorded, not the current repository state. Check [GitHub](https://github.com/notlestat/FORM/pulls) for current pull request status.
+
 12 October 2026: the expanded FORM 0.2.0 alpha is on `codex/first-alpha-frame`, based on spacing head `a84b830`, with implementation at `8f32791`. [Alpha scope and testing](FIRST_ALPHA.md) covers shared FRAME, editable text/shapes, artboards, contact sheets, reusable AFTERIMAGE definitions and format-4 migration. It inherits the existing unmerged feature stack; main still has initialization only. [Draft PR #6](https://github.com/notlestat/FORM/pull/6) carries the complete implementation for review against main and remains unmerged. No merge is authorized.
 
 [Draft PR #5](https://github.com/notlestat/FORM/pull/5) is open/unmerged, with spacing implementation at `ab230f0`. The current spacing step is on `codex/artwork-spacing`, based on alignment/fix head `85840d88a7fe78ae5841551d1c89576e2160c12b`. It adds size-aware equal gaps and equal centres, with 99 CPU tests/build passing. [Scope and evidence](ARTWORK_SPACING.md). The earlier unmerged PRs are inherited context; the new spacing review starts after that head.

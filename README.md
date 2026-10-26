@@ -21,16 +21,16 @@ npm --version
 
 ### 2. Download FORM
 
-The runnable alpha is on [`codex/first-alpha-frame`](https://github.com/notlestat/FORM/tree/codex/first-alpha-frame), pending review in [pull request #6](https://github.com/notlestat/FORM/pull/6). The `main` branch currently contains repository setup and planning documents.
+The `main` branch contains the runnable alpha and these setup instructions.
 
-Without Git, [download the alpha ZIP](https://github.com/notlestat/FORM/archive/refs/heads/codex/first-alpha-frame.zip). Extract the ZIP, then open a terminal in the extracted folder that contains `package.json`.
+Without Git, [download the project ZIP](https://github.com/notlestat/FORM/archive/refs/heads/main.zip). Extract the ZIP, then open a terminal in the extracted folder that contains `package.json`.
 
 On Windows, open that folder in File Explorer, type `cmd` in the address bar, and press Enter. On macOS or Linux, type `cd ` in Terminal, drag the extracted folder into the window, then press Enter.
 
-If you already have [Git](https://git-scm.com/downloads), clone the alpha instead:
+If you already have [Git](https://git-scm.com/downloads), clone the repository instead:
 
 ```sh
-git clone --branch codex/first-alpha-frame --single-branch https://github.com/notlestat/FORM.git
+git clone https://github.com/notlestat/FORM.git
 cd FORM
 ```
 
@@ -87,7 +87,7 @@ This alpha saves project format 4 and reads formats 1 through 4. Older builds ca
 ## Fix setup problems
 
 - If `node` or `npm` is not recognized, install Node.js and open a new terminal.
-- If npm reports a missing `package.json`, open the terminal in the extracted project folder. Check that you downloaded the alpha branch rather than `main`.
+- If npm reports a missing `package.json`, open the terminal in the extracted project folder. Check that the ZIP is extracted and that you are inside the folder containing `package.json`.
 - If PowerShell blocks `npm.ps1`, use Command Prompt, or run `npm.cmd` in place of `npm`.
 - If port 5174 is in use, stop an earlier FORM server or run `npm run dev -- --port 5175 --strictPort`. Open the address printed in the terminal. Recovery from port 5174 is separate.
 - If the canvas fails to render or reports a WebGL error, enable graphics acceleration in your browser, restart it, and update your graphics driver. Try another browser with WebGL 2 support. A successful build does not establish GPU compatibility.
