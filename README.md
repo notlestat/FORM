@@ -53,7 +53,7 @@ To stop FORM, press **Ctrl+C** in the terminal. To use it again, open a terminal
 npm run dev -- --port 5174 --strictPort
 ```
 
-You only need `npm ci` again after changing dependencies or downloading a different version. Internet access is needed to download the project and dependencies. Image processing and project storage happen locally in the browser; the app uses bundled fonts and a bundled sample photograph.
+Run `npm ci` again only after changing dependencies or downloading a different version. You need internet access to download the project and its dependencies. Image processing and project storage happen in the browser on your computer. The app uses bundled fonts and a bundled sample photograph.
 
 ## Make and save a study
 
@@ -65,13 +65,13 @@ You only need `npm ci` again after changing dependencies or downloading a differ
 6. Choose **Save** to download an editable `.form` project. Use **Open** to load it later, including on another computer running this alpha.
 7. Choose **Export PNG** for a composition, or select a FRAME artboard and choose **Export artboard** for an image at its exact dimensions. Check each artwork's **In export** setting to control what appears.
 
-Photographs must fit within 4096 pixels per edge and 16 megapixels. FIELD supports PNG export with a 2K or 4K long edge. FRAME artboards support dimensions up to 8192 pixels per edge. Exports are raster images; editable text and shapes remain in the `.form` project.
+Photographs must fit within 4096 pixels per edge and 16 megapixels. FIELD supports PNG export with a 2K or 4K long edge. FRAME artboards support dimensions up to 8192 pixels per edge. Exports are raster images. Editable text and shapes stay in the `.form` project.
 
 ### Keep a portable copy
 
 A `.form` file embeds the original photographs and editable project settings. Save one to a folder you can find again. PNG export saves an image, not an editable project.
 
-FORM also stores a recovery snapshot in the browser after edits settle and offers an earlier snapshot on startup. Browser storage can be cleared and is not a backup. Use the same browser and local address for recovery; another browser, port, or private browsing session uses separate storage.
+FORM also stores a recovery snapshot in the browser after edits settle and offers an earlier snapshot on startup. Browser storage can be cleared and is not a backup. Use the same browser and local address for recovery. Another browser, port, or private browsing session uses separate storage.
 
 This alpha saves project format 4 and reads formats 1 through 4. Older builds cannot open format 4. The [legacy study](http://127.0.0.1:5174/?legacy=1) is available separately and saves version 2 files.
 
@@ -79,7 +79,7 @@ This alpha saves project format 4 and reads formats 1 through 4. Older builds ca
 
 - Hold **Space** and drag to pan. Scroll to pan, or pinch to zoom. Hold **Ctrl** on Windows or Linux, or **Command** on macOS, while scrolling to zoom.
 - Press **F** to fit the selection in view.
-- **Shift-click** artwork to select several items. Alignment controls appear in the inspector; spacing controls appear with three or more selected artworks.
+- **Shift-click** artwork to select several items. Alignment controls appear in the inspector. Spacing controls appear when three or more artworks are selected.
 - Hold **Shift** while dragging a size handle to preserve proportions.
 - Use **Ctrl+Z** to undo and **Ctrl+Y** or **Ctrl+Shift+Z** to redo on Windows or Linux. On macOS, use **Command+Z** and **Command+Shift+Z**.
 - Press **Delete** or **Backspace** to remove the selection. Press **Escape** to cancel a gesture. Text fields keep their normal editing behavior.
