@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-09",
+  "lastVerificationDate": "2026-10-10",
+  "scope": "Manual painted subject selection for bounded AFTERIMAGE studies",
+  "automated": {
+    "tests": 52,
+    "newMaskTests": 8,
+    "result": "pass",
+    "typescriptAndBuild": "pass"
+  },
+  "latestVerification": {
+    "date": "2026-10-10",
+    "commands": ["npm test", "npm run build"],
+    "testsPassed": 52,
+    "testsFailed": 0,
+    "typescriptAndProductionBuild": "pass",
+    "includes": "Four studies with all 64 strokes and 512 points each",
+    "browserChecksExecuted": false
+  },
+  "bounds": {
+    "strokesPerSelection": 64,
+    "pointsPerSelection": 512,
+    "pointsPerUIGesture": 128,
+    "brushDiameterPercent": [
+      1,
+      40
+    ],
+    "normalizedCoordinateDecimals": 6,
+    "maskRasterLongEdge": 1024,
+    "maxBlurPadding": 77
+  },
+  "verified": [
+    "Validated detached ordered paint/erase geometry",
+    "Bounded gesture collection and invalid data rejection without authored mutation",
+    "One exact undo/redo per stroke and cancellation preserving redo",
+    "Trajectory and capture unchanged by selection edit",
+    "Exact mask file roundtrip and required instrument version 2",
+    "Independent duplicate selections with deduplicated photographs",
+    "Legacy and mixed study decoding",
+    "Four bounded painted studies fit metadata budget"
+  ],
+  "compatibility": [
+    {
+      "file": "project-roundtrip.form",
+      "studies": 1,
+      "legacy": true,
+      "instrumentVersions": [
+        1
+      ]
+    },
+    {
+      "file": "command-history-study.form",
+      "studies": 1,
+      "legacy": true,
+      "instrumentVersions": [
+        1
+      ]
+    },
+    {
+      "file": "four-studies.form",
+      "studies": 4,
+      "legacy": false,
+      "instrumentVersions": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "file": "drawn-trajectory.form",
+      "studies": 1,
+      "legacy": false,
+      "instrumentVersions": [
+        1
+      ]
+    }
+  ],
+  "fixture": {
+    "file": "experiments/results/painted-subject.form",
+    "origin": "Codec-generated fixture, not browser download or photographic quality proof",
+    "bytes": 54851,
+    "sha256": "56d455b5012eeef0a3b586981ae7c844a055d219f2d21c9bfcbcbbb8d993d464",
+    "metadataBytes": 3520,
+    "instrumentRequirement": 2,
+    "studyInstrumentVersions": [
+      1,
+      2
+    ]
+  },
+  "rendering": {
+    "status": "implemented, not executed/verified in browser",
+    "architecture": "Shared Canvas2D rasterizer; one cached source-space WebGL alpha texture reused across exposures and tiles",
+    "inAppChecksAdded": [
+      "Full selection alpha",
+      "Empty selection alpha",
+      "Painted dot top/bottom orientation",
+      "Erased centre with retained corner",
+      "Existing selected-study tiled/untiled comparison"
+    ],
+    "unverified": [
+      "Actual brush pointer lifecycle and zoom mapping",
+      "Canvas2D feather and SVG overlay",
+      "GPU mask alpha/orientation and export pixels",
+      "Latest interface layout and performance"
+    ]
+  },
+  "browserConstraint": "Earlier saved permission setting denied controller access despite user approval; not retried through another route",
+  "review": {
+    "branch": "codex/painted-subject-mask",
+    "repository": "https://github.com/notlestat/FORM",
+    "visibility": "public",
+    "pullRequest": "https://github.com/notlestat/FORM/pull/1",
+    "merged": false,
+    "published": true,
+    "publicationNote": "Source branch pushed publicly on 10 October; this is not an application deployment or PR merge"
+  },
+  "notEstablished": [
+    "Automatic subject detection",
+    "Full source-resolution hair/detail selection",
+    "Native macOS/Windows rendering",
+    "Artistic edge quality or final interface approval"
+  ]
+}
